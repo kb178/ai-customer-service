@@ -1,0 +1,761 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>智能客服</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .chat-container {
+            width: 100%;
+            max-width: 800px;
+            height: 90vh;
+            background: #fff;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .chat-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px 25px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .chat-header .avatar {
+            width: 50px;
+            height: 50px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+        }
+
+        .chat-header .info h3 {
+            font-size: 18px;
+            font-weight: 600;
+        }
+
+        .chat-header .info p {
+            font-size: 13px;
+            opacity: 0.9;
+        }
+
+        .chat-header .status {
+            margin-left: auto;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 13px;
+        }
+
+        .chat-header .status::before {
+            content: '';
+            width: 8px;
+            height: 8px;
+            background: #4ade80;
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .mode-switch {
+            margin-left: auto;
+            display: flex;
+            gap: 6px;
+            background: rgba(255, 255, 255, 0.2);
+            padding: 4px;
+            border-radius: 8px;
+        }
+
+        .mode-btn {
+            padding: 6px 12px;
+            border: none;
+            border-radius: 6px;
+            font-size: 12px;
+            cursor: pointer;
+            background: transparent;
+            color: rgba(255, 255, 255, 0.8);
+            transition: all 0.2s;
+        }
+
+        .mode-btn.active {
+            background: white;
+            color: #667eea;
+            font-weight: 600;
+        }
+
+        .mode-btn:hover:not(.active) {
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .mode-label {
+            font-size: 11px;
+            color: #94a3b8;
+            text-align: center;
+            padding: 4px;
+            background: #f1f5f9;
+            border-radius: 4px;
+            margin-bottom: 10px;
+        }
+
+        .chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+            background: #f8fafc;
+        }
+
+        .message {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 20px;
+            animation: fadeIn 0.3s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .message.user {
+            flex-direction: row-reverse;
+        }
+
+        .message .msg-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            flex-shrink: 0;
+        }
+
+        .message.bot .msg-avatar {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .message.user .msg-avatar {
+            background: #e2e8f0;
+        }
+
+        .message .msg-content {
+            max-width: 70%;
+        }
+
+        .message .msg-bubble {
+            padding: 14px 18px;
+            border-radius: 18px;
+            line-height: 1.6;
+            font-size: 14px;
+            word-wrap: break-word;
+        }
+
+        .message.bot .msg-bubble {
+            background: white;
+            color: #334155;
+            border-bottom-left-radius: 4px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+        }
+
+        .message.user .msg-bubble {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-bottom-right-radius: 4px;
+        }
+
+        .message .msg-time {
+            font-size: 11px;
+            color: #94a3b8;
+            margin-top: 6px;
+            padding: 0 4px;
+        }
+
+        .message.user .msg-time {
+            text-align: right;
+        }
+
+        .message table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 10px 0;
+            font-size: 13px;
+            background: white;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+        }
+
+        .message table th {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 10px 12px;
+            text-align: left;
+            font-weight: 500;
+        }
+
+        .message table td {
+            padding: 10px 12px;
+            border-bottom: 1px solid #e2e8f0;
+            color: #475569;
+        }
+
+        .message table tr:last-child td {
+            border-bottom: none;
+        }
+
+        .message table tr:hover td {
+            background: #f8fafc;
+        }
+
+        .chat-input {
+            padding: 20px;
+            background: white;
+            border-top: 1px solid #e2e8f0;
+        }
+
+        .input-wrapper {
+            display: flex;
+            gap: 12px;
+            align-items: flex-end;
+        }
+
+        .chat-input textarea {
+            flex: 1;
+            padding: 14px 18px;
+            border: 2px solid #e2e8f0;
+            border-radius: 24px;
+            font-size: 14px;
+            resize: none;
+            min-height: 48px;
+            max-height: 120px;
+            font-family: inherit;
+            transition: border-color 0.2s, box-shadow 0.2s;
+            outline: none;
+        }
+
+        .chat-input textarea:focus {
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .chat-input textarea::placeholder {
+            color: #94a3b8;
+        }
+
+        .send-btn {
+            width: 48px;
+            height: 48px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none;
+            border-radius: 50%;
+            color: white;
+            font-size: 20px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .send-btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .send-btn:active {
+            transform: scale(0.95);
+        }
+
+        .send-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .typing-indicator {
+            display: none;
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+
+        .typing-indicator.active {
+            display: flex;
+        }
+
+        .typing-indicator .dots {
+            background: white;
+            padding: 14px 18px;
+            border-radius: 18px;
+            border-bottom-left-radius: 4px;
+            display: flex;
+            gap: 4px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+        }
+
+        .typing-indicator .dots span {
+            width: 8px;
+            height: 8px;
+            background: #94a3b8;
+            border-radius: 50%;
+            animation: bounce 1.4s infinite ease-in-out;
+        }
+
+        .typing-indicator .dots span:nth-child(1) { animation-delay: -0.32s; }
+        .typing-indicator .dots span:nth-child(2) { animation-delay: -0.16s; }
+
+        @keyframes bounce {
+            0%, 80%, 100% { transform: scale(0); }
+            40% { transform: scale(1); }
+        }
+
+        .quick-replies {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 10px;
+        }
+
+        .quick-reply-btn {
+            padding: 8px 16px;
+            background: #f1f5f9;
+            border: 1px solid #e2e8f0;
+            border-radius: 20px;
+            font-size: 13px;
+            color: #64748b;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .quick-reply-btn:hover {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-color: transparent;
+        }
+
+        .welcome-msg {
+            text-align: center;
+            padding: 40px 20px;
+            color: #64748b;
+        }
+
+        .welcome-msg .emoji {
+            font-size: 48px;
+            margin-bottom: 15px;
+        }
+
+        .welcome-msg h4 {
+            font-size: 18px;
+            color: #334155;
+            margin-bottom: 10px;
+        }
+
+        .welcome-msg p {
+            font-size: 14px;
+            line-height: 1.6;
+        }
+    </style>
+</head>
+<body>
+    <div class="chat-container">
+        <div class="chat-header">
+            <div class="avatar">🤖</div>
+            <div class="info">
+                <h3>智能课程顾问</h3>
+                <p>为您推荐最适合的课程</p>
+            </div>
+            <div class="mode-switch">
+                <button class="mode-btn active" id="modeInstruction" onclick="switchMode('instruction')">指令解析</button>
+                <button class="mode-btn" id="modeFunction" onclick="switchMode('function')">Function Calling</button>
+            </div>
+            <div class="status">在线</div>
+        </div>
+
+        <div class="chat-messages" id="chatMessages">
+            <div class="welcome-msg">
+                <div class="emoji">👋</div>
+                <h4>您好！我是智能课程顾问</h4>
+                <p>我可以帮您了解课程信息、推荐适合您的课程、预约试听等。<br>请问有什么可以帮您的？</p>
+            </div>
+
+            <div class="quick-replies" id="quickReplies">
+                <button class="quick-reply-btn" onclick="sendQuickReply('我想了解课程信息')">📚 了解课程</button>
+                <button class="quick-reply-btn" onclick="sendQuickReply('有什么适合零基础的课程？')">🎓 零基础课程</button>
+                <button class="quick-reply-btn" onclick="sendQuickReply('我想预约试听')">📅 预约试听</button>
+                <button class="quick-reply-btn" onclick="sendQuickReply('你们有哪些校区？')">🏫 校区信息</button>
+            </div>
+
+            <div class="typing-indicator" id="typingIndicator">
+                <div class="msg-avatar" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">🤖</div>
+                <div class="dots">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                </div>
+            </div>
+        </div>
+
+        <div class="chat-input">
+            <div class="input-wrapper">
+                <textarea 
+                    id="messageInput" 
+                    placeholder="输入您的问题..." 
+                    rows="1"
+                    onkeydown="handleKeyDown(event)"
+                    oninput="autoResize(this)"
+                ></textarea>
+                <button class="send-btn" id="sendBtn" onclick="sendMessage()">
+                    ➤
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        /**
+         * 智能客服前端脚本
+         * 
+         * 功能说明：
+         * - 管理用户会话（sessionId）
+         * - 发送消息到后端API
+         * - 显示AI回复
+         * - 支持快捷回复按钮
+         * - 支持表格渲染（课程信息）
+         */
+
+        // 当前会话ID，用于保持对话上下文
+        let sessionId = generateSessionId();
+        // 加载状态标记，防止重复发送
+        let isLoading = false;
+        // 当前对话模式：instruction-指令解析，function-Function Calling
+        let currentMode = 'instruction';
+
+        /**
+         * 切换对话模式
+         * @param mode instruction-指令解析模式，function-Function Calling模式
+         */
+        function switchMode(mode) {
+            currentMode = mode;
+
+            // 更新按钮样式
+            document.getElementById('modeInstruction').classList.toggle('active', mode === 'instruction');
+            document.getElementById('modeFunction').classList.toggle('active', mode === 'function');
+
+            // 生成新的会话ID，避免上下文混淆
+            sessionId = generateSessionId();
+
+            // 显示模式切换提示
+            const modeName = mode === 'instruction' ? '指令解析模式' : 'Function Calling模式';
+            addSystemMessage(`已切换到【${modeName}】，会话已重置`);
+        }
+
+        /**
+         * 添加系统消息
+         * @param content 消息内容
+         */
+        function addSystemMessage(content) {
+            const messagesDiv = document.getElementById('chatMessages');
+            const quickReplies = document.getElementById('quickReplies');
+
+            if (quickReplies) {
+                quickReplies.style.display = 'none';
+            }
+
+            const msgDiv = document.createElement('div');
+            msgDiv.className = 'mode-label';
+            msgDiv.textContent = content;
+
+            const typingIndicator = document.getElementById('typingIndicator');
+            messagesDiv.insertBefore(msgDiv, typingIndicator);
+            scrollToBottom();
+        }
+
+        /**
+         * 生成随机会话ID
+         * @returns 格式为 session_xxxxxxxx 的字符串
+         */
+        function generateSessionId() {
+            return 'session_' + Math.random().toString(36).substr(2, 9);
+        }
+
+        /**
+         * 获取当前时间字符串（HH:mm格式）
+         * @returns 格式化的时间字符串
+         */
+        function getCurrentTime() {
+            const now = new Date();
+            return now.getHours().toString().padStart(2, '0') + ':' +
+                   now.getMinutes().toString().padStart(2, '0');
+        }
+
+        /**
+         * 自动调整文本框高度
+         * @param textarea 文本框元素
+         */
+        function autoResize(textarea) {
+            textarea.style.height = 'auto';
+            textarea.style.height = Math.min(textarea.scrollHeight, 120) + 'px';
+        }
+
+        /**
+         * 处理键盘事件（Enter发送，Shift+Enter换行）
+         */
+        function handleKeyDown(event) {
+            if (event.key === 'Enter' && !event.shiftKey) {
+                event.preventDefault();
+                sendMessage();
+            }
+        }
+
+        /**
+         * 发送快捷回复
+         * @param text 快捷回复内容
+         */
+        function sendQuickReply(text) {
+            document.getElementById('messageInput').value = text;
+            sendMessage();
+        }
+
+        /**
+         * HTML转义，防止XSS攻击
+         * @param text 原始文本
+         * @returns 转义后的文本
+         */
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        /**
+         * 格式化消息内容
+         * - 检测是否包含表格数据（课程信息）
+         * - 处理换行符
+         * @param text 原始文本
+         * @returns 格式化后的HTML
+         */
+        function formatMessage(text) {
+            // 检测是否包含表格数据（课程信息）
+            if (text.includes('课程名称') && text.includes('课程类型')) {
+                return formatAsTable(text);
+            }
+
+            // 处理换行
+            return escapeHtml(text).replace(/\n/g, '<br>');
+        }
+
+        /**
+         * 将文本格式转换为HTML表格
+         * @param text 包含表格数据的文本
+         * @returns HTML表格字符串
+         */
+        function formatAsTable(text) {
+            // 尝试将文本转换为表格
+            const lines = text.split('\n').filter(line => line.trim());
+            let tableHtml = '<table><thead><tr>';
+
+            // 查找表头
+            let headerFound = false;
+            let rows = [];
+
+            for (let line of lines) {
+                line = line.trim();
+                if (line.includes('课程名称') && line.includes('课程类型')) {
+                    // 解析表头
+                    const headers = parseTableRow(line);
+                    headers.forEach(h => tableHtml += `<th>${escapeHtml(h)}</th>`);
+                    tableHtml += '</tr></thead><tbody>';
+                    headerFound = true;
+                } else if (headerFound && line.match(/^\d/)) {
+                    // 解析数据行
+                    rows.push(parseTableRow(line));
+                }
+            }
+
+            // 添加数据行
+            rows.forEach(row => {
+                tableHtml += '<tr>';
+                row.forEach(cell => tableHtml += `<td>${escapeHtml(cell)}</td>`);
+                tableHtml += '</tr>';
+            });
+
+            tableHtml += '</tbody></table>';
+
+            // 提取表格前后的文本
+            const beforeTable = text.split('课程名称')[0].trim();
+            const afterTable = text.split('星期天').pop()?.split('\n').filter(l => l.trim() && !l.includes('|')).join('\n').trim() || '';
+
+            let result = '';
+            if (beforeTable) result += escapeHtml(beforeTable) + '<br>';
+            if (rows.length > 0) result += tableHtml;
+            if (afterTable) result += '<br>' + escapeHtml(afterTable);
+
+            return result || escapeHtml(text);
+        }
+
+        /**
+         * 解析表格行数据
+         * @param line 行文本
+         * @returns 单元格数组
+         */
+        function parseTableRow(line) {
+            // 支持多种分隔符
+            if (line.includes('|')) {
+                return line.split('|').map(c => c.trim()).filter(c => c);
+            }
+            // 空格分隔（简单解析）
+            return line.split(/\s{2,}/).map(c => c.trim()).filter(c => c);
+        }
+
+        /**
+         * 添加消息到聊天窗口
+         * @param content 消息内容
+         * @param isUser 是否为用户消息
+         */
+        function addMessage(content, isUser = false) {
+            const messagesDiv = document.getElementById('chatMessages');
+            const quickReplies = document.getElementById('quickReplies');
+
+            // 隐藏快捷回复（首次发送消息后）
+            if (quickReplies) {
+                quickReplies.style.display = 'none';
+            }
+
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${isUser ? 'user' : 'bot'}`;
+
+            const avatar = isUser ? '👤' : '🤖';
+            const formattedContent = isUser ? escapeHtml(content) : formatMessage(content);
+
+            messageDiv.innerHTML = `
+                <div class="msg-avatar">${avatar}</div>
+                <div class="msg-content">
+                    <div class="msg-bubble">${formattedContent}</div>
+                    <div class="msg-time">${getCurrentTime()}</div>
+                </div>
+            `;
+
+            // 插入到typing indicator之前
+            const typingIndicator = document.getElementById('typingIndicator');
+            messagesDiv.insertBefore(messageDiv, typingIndicator);
+
+            scrollToBottom();
+        }
+
+        /**
+         * 滚动到聊天窗口底部
+         */
+        function scrollToBottom() {
+            const messagesDiv = document.getElementById('chatMessages');
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        }
+
+        /**
+         * 显示"正在输入"动画
+         */
+        function showTyping() {
+            document.getElementById('typingIndicator').classList.add('active');
+            scrollToBottom();
+        }
+
+        /**
+         * 隐藏"正在输入"动画
+         */
+        function hideTyping() {
+            document.getElementById('typingIndicator').classList.remove('active');
+        }
+
+        /**
+         * 发送消息到后端
+         * 
+         * 流程：
+         * 1. 获取用户输入的消息
+         * 2. 显示用户消息到聊天窗口
+         * 3. 显示"正在输入"动画
+         * 4. 调用后端API
+         * 5. 显示AI回复
+         */
+        async function sendMessage() {
+            const input = document.getElementById('messageInput');
+            const message = input.value.trim();
+
+            // 空消息或正在加载时不处理
+            if (!message || isLoading) return;
+
+            isLoading = true;
+            document.getElementById('sendBtn').disabled = true;
+
+            // 显示用户消息
+            addMessage(message, true);
+            input.value = '';
+            input.style.height = 'auto';
+
+            // 显示输入中动画
+            showTyping();
+
+            try {
+                // 调用后端API
+                const response = await fetch('/api/chat/send', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        message: message,
+                        sessionId: sessionId,
+                        mode: currentMode
+                    })
+                });
+
+                const data = await response.json();
+
+                hideTyping();
+
+                // 显示AI回复
+                addMessage(data.reply, false);
+
+                // 更新sessionId（首次对话时后端会返回）
+                if (data.sessionId) {
+                    sessionId = data.sessionId;
+                }
+            } catch (error) {
+                hideTyping();
+                addMessage('抱歉，网络出现问题，请稍后重试。', false);
+                console.error('Error:', error);
+            } finally {
+                isLoading = false;
+                document.getElementById('sendBtn').disabled = false;
+            }
+        }
+    </script>
+</body>
+</html>
