@@ -16,6 +16,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Description;
 
 import java.util.List;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 /**
@@ -47,6 +48,13 @@ public class CampusFunctions {
                     .distinct()
                     .toList();
 
+            if (provinceIds.isEmpty()) {
+                GetProvincesResponse response = new GetProvincesResponse();
+                response.setProvinces(List.of());
+                response.setTotal(0);
+                return response;
+            }
+
             // 查询这些省份
             List<Province> provinces = provinceService.listByIds(provinceIds);
 
@@ -75,6 +83,13 @@ public class CampusFunctions {
                     .filter(id -> id != null)
                     .distinct()
                     .toList();
+
+            if (cityIds.isEmpty()) {
+                GetCitiesResponse response = new GetCitiesResponse();
+                response.setCities(List.of());
+                response.setTotal(0);
+                return response;
+            }
 
             List<City> cities = cityService.listByIds(cityIds);
 
@@ -111,17 +126,17 @@ public class CampusFunctions {
                     return response;
                 }
 
-                campuses = campusService.lambdaQuery()
+                var query = campusService.lambdaQuery()
                         .in(Campus::getId, campusIds)
                         .eq(Campus::getStatus, 1);
 
                 if (request.getCityId() != null) {
-                    campuses = campuses.eq(Campus::getCityId, request.getCityId());
+                    query.eq(Campus::getCityId, request.getCityId());
                 } else if (request.getProvinceId() != null) {
-                    campuses = campuses.eq(Campus::getProvinceId, request.getProvinceId());
+                    query.eq(Campus::getProvinceId, request.getProvinceId());
                 }
 
-                campuses = campuses.list();
+                campuses = query.list();
             } else if (request.getCityId() != null) {
                 campuses = campusService.lambdaQuery()
                         .eq(Campus::getCityId, request.getCityId())

@@ -2,6 +2,7 @@ package com.aicustomer.controller;
 
 import com.aicustomer.service.ChatService;
 import com.aicustomer.service.FunctionCallingChatService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.web.bind.annotation.*;
@@ -30,35 +31,21 @@ public class ChatController {
 
     /**
      * 发送消息接口
-     *
-     * 请求参数：
-     * - message: 用户消息内容
-     * - sessionId: 会话ID（可选）
-     * - mode: 对话模式（可选，instruction-指令解析模式，function-Function Calling模式，默认instruction）
-     *
-     * 返回：
-     * - sessionId: 会话ID
-     * - reply: AI回复内容
-     * - mode: 使用的模式
      */
     @PostMapping("/send")
-    public Map<String, String> sendMessage(@RequestBody Map<String, String> request) {
-        String message = request.get("message");
-        String sessionId = request.getOrDefault("sessionId", UUID.randomUUID().toString());
-        String mode = request.getOrDefault("mode", "instruction");
+    public ChatResponse sendMessage(@Valid @RequestBody ChatRequest request) {
+        String sessionId = request.getSessionId() != null
+                ? request.getSessionId()
+                : UUID.randomUUID().toString();
 
         String reply;
-        if ("function".equals(mode)) {
-            reply = functionCallingChatService.chat(sessionId, message);
+        if ("function".equals(request.getMode())) {
+            reply = functionCallingChatService.chat(sessionId, request.getMessage());
         } else {
-            reply = chatService.chat(sessionId, message);
+            reply = chatService.chat(sessionId, request.getMessage());
         }
 
-        return Map.of(
-                "sessionId", sessionId,
-                "reply", reply,
-                "mode", mode
-        );
+        return new ChatResponse(sessionId, reply, request.getMode());
     }
 
     /**

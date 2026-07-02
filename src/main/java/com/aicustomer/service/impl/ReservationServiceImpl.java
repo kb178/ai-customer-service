@@ -1,5 +1,6 @@
 package com.aicustomer.service.impl;
 
+import com.aicustomer.config.BizConstants;
 import com.aicustomer.entity.Reservation;
 import com.aicustomer.mapper.ReservationMapper;
 import com.aicustomer.service.ReservationService;
@@ -27,7 +28,7 @@ public class ReservationServiceImpl extends ServiceImpl<ReservationMapper, Reser
     @Override
     public Reservation createReservation(Reservation reservation) {
         // 设置初始状态为待确认
-        reservation.setStatus(0);
+        reservation.setStatus(BizConstants.STATUS_PENDING);
         // 保存到数据库
         save(reservation);
         return reservation;

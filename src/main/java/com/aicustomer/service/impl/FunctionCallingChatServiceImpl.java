@@ -1,5 +1,7 @@
 package com.aicustomer.service.impl;
 
+import com.aicustomer.annotation.IntentMatcher;
+import com.aicustomer.config.BizConstants;
 import com.aicustomer.entity.Course;
 import com.aicustomer.entity.Campus;
 import com.aicustomer.entity.Customer;
@@ -36,6 +38,7 @@ public class FunctionCallingChatServiceImpl implements FunctionCallingChatServic
     private final CampusService campusService;
     private final ReservationService reservationService;
     private final CustomerService customerService;
+    private final IntentMatcher intentMatcher;
 
     /** 会话上下文存储 */
     private final Map<String, SessionContext> sessionContexts = new ConcurrentHashMap<>();
@@ -43,6 +46,16 @@ public class FunctionCallingChatServiceImpl implements FunctionCallingChatServic
     /** Function Calling模式的系统提示词 */
     private static final String SYSTEM_PROMPT = """
             你是一个专业的课程咨询顾问，负责为潜在学员提供课程咨询服务。
+
+            ## 最重要的规则：必须调用函数
+            **当你需要执行任何操作时，必须调用对应的函数，绝对不能只回复文字！**
+            - 用户要创建预约 → 必须调用 createReservation
+            - 用户要取消预约 → 必须调用 cancelReservation
+            - 用户要修改预约 → 必须调用 updateReservation
+            - 用户要查询预约 → 必须调用 queryReservation
+            - 用户要查课程 → 必须调用 searchCourses
+            - 用户要查校区 → 必须调用 getCampuses
+            **只回复文字而不调用函数 = 严重错误！**
 
             ## 核心规则
             1. **永远不要询问用户已经提供的信息** - 如果已知用户信息，直接使用
@@ -73,7 +86,7 @@ public class FunctionCallingChatServiceImpl implements FunctionCallingChatServic
             ### 预约相关
             - createReservation: 创建课程预约（参数：customerName、phone、courseId、campusId、scheduleId可选）
             - updateReservation: 修改已有预约
-            - cancelReservation: 取消已有预约
+            - cancelReservation: 取消已有预约（参数：reservationId、reason）
             - queryReservation: 查询预约信息（可按reservationId或phone查询）
 
             ## 交互流程
@@ -92,9 +105,11 @@ public class FunctionCallingChatServiceImpl implements FunctionCallingChatServic
 
     @Override
     public String chat(String sessionId, String message) {
+        //如果sessionId存在返回对应的SessionContext，不存在就创建一个新的SessionContext
         SessionContext context = sessionContexts.computeIfAbsent(sessionId, k -> new SessionContext());
+        //新建的赋值，已存在的覆盖
         context.setSessionId(sessionId);
-
+        //保存用户消息
         context.addMessage("用户", message);
 
         // 检查用户是否确认了预约修改/取消
@@ -164,30 +179,17 @@ public class FunctionCallingChatServiceImpl implements FunctionCallingChatServic
     }
 
     private void extractInfoFromMessage(String message, SessionContext context) {
-        String lowerMsg = message.toLowerCase();
+        // 使用注解驱动的实体提取
+        Map<String, String> entities = intentMatcher.extractEntities(message);
 
-        // 提取兴趣
-        if (!context.hasInfo("interest")) {
-            if (lowerMsg.contains("编程") || lowerMsg.contains("java") || lowerMsg.contains("python")) {
-                context.setInterest("编程开发");
-            } else if (lowerMsg.contains("设计") || lowerMsg.contains("ui")) {
-                context.setInterest("UI/UX设计");
-            } else if (lowerMsg.contains("数据") || lowerMsg.contains("ai")) {
-                context.setInterest("数据分析");
-            }
+        if (!context.hasInfo("interest") && entities.containsKey("interest")) {
+            context.setInterest(entities.get("interest"));
+        }
+        if (!context.hasInfo("education") && entities.containsKey("education")) {
+            context.setEducation(entities.get("education"));
         }
 
-        // 提取学历
-        if (!context.hasInfo("education")) {
-            if (lowerMsg.contains("大一")) context.setEducation("大一");
-            else if (lowerMsg.contains("大二")) context.setEducation("大二");
-            else if (lowerMsg.contains("大三")) context.setEducation("大三");
-            else if (lowerMsg.contains("大四")) context.setEducation("大四");
-            else if (lowerMsg.contains("研究生") || lowerMsg.contains("硕士")) context.setEducation("研究生");
-            else if (lowerMsg.contains("零基础")) context.setEducation("零基础");
-        }
-
-        // 提取姓名
+        // 姓名提取（正则，注解不易表达）
         if (!context.hasInfo("name")) {
             java.util.regex.Matcher nameMatcher = java.util.regex.Pattern.compile(
                     "(?:我叫|我是|我姓|名字是|姓名是|叫我)[\\s]*([\\u4e00-\\u9fa5]{2,4})"
@@ -197,7 +199,7 @@ public class FunctionCallingChatServiceImpl implements FunctionCallingChatServic
             }
         }
 
-        // 提取电话
+        // 电话提取（正则）
         if (!context.hasInfo("phone")) {
             java.util.regex.Matcher phoneMatcher = java.util.regex.Pattern.compile(
                     "(?:电话|手机|联系方式|号码)[\\s:：]*(1[3-9]\\d{9})"
@@ -207,34 +209,21 @@ public class FunctionCallingChatServiceImpl implements FunctionCallingChatServic
             }
         }
 
-        // 提取课程选择
-        if (!context.hasInfo("course")) {
-            if (lowerMsg.contains("java")) {
-                context.setSelectedCourseId(1L);
-                context.setSelectedCourseName("Java全栈开发");
-            } else if (lowerMsg.contains("python") || lowerMsg.contains("数据分析")) {
-                context.setSelectedCourseId(2L);
-                context.setSelectedCourseName("Python数据分析");
-            } else if (lowerMsg.contains("ui") || lowerMsg.contains("ux") || lowerMsg.contains("设计")) {
-                context.setSelectedCourseId(3L);
-                context.setSelectedCourseName("UI/UX设计");
-            } else if (lowerMsg.contains("人工智能") || lowerMsg.contains("ai")) {
-                context.setSelectedCourseId(4L);
-                context.setSelectedCourseName("人工智能入门");
+        // 课程：从数据库动态匹配
+        if (!context.hasInfo("course") && entities.containsKey("course")) {
+            com.aicustomer.entity.Course matched = intentMatcher.lookupCourse(entities.get("course"));
+            if (matched != null) {
+                context.setSelectedCourseId(matched.getId());
+                context.setSelectedCourseName(matched.getName());
             }
         }
 
-        // 提取校区选择
-        if (!context.hasInfo("campus")) {
-            if (lowerMsg.contains("中关村")) {
-                context.setSelectedCampusId(1L);
-                context.setSelectedCampusName("中关村校区");
-            } else if (lowerMsg.contains("国贸")) {
-                context.setSelectedCampusId(2L);
-                context.setSelectedCampusName("国贸校区");
-            } else if (lowerMsg.contains("西直门")) {
-                context.setSelectedCampusId(3L);
-                context.setSelectedCampusName("西直门校区");
+        // 校区：从数据库动态匹配
+        if (!context.hasInfo("campus") && entities.containsKey("campus")) {
+            com.aicustomer.entity.Campus matched = intentMatcher.lookupCampus(entities.get("campus"));
+            if (matched != null) {
+                context.setSelectedCampusId(matched.getId());
+                context.setSelectedCampusName(matched.getName());
             }
         }
 
@@ -245,16 +234,13 @@ public class FunctionCallingChatServiceImpl implements FunctionCallingChatServic
             customer.setPhone(context.getPhone());
             customer.setEducation(context.getEducation());
             customer.setInterest(context.getInterest());
-            customer.setSource("在线客服-FunctionCalling");
+            customer.setSource(BizConstants.SOURCE_FUNCTION_CALLING);
             customerService.saveCustomer(customer);
         }
     }
 
     private boolean isConfirmMessage(String message) {
-        String lowerMsg = message.toLowerCase();
-        return lowerMsg.contains("确认") || lowerMsg.contains("确定") ||
-               lowerMsg.contains("没问题") || lowerMsg.contains("好的") ||
-               lowerMsg.contains("可以") || lowerMsg.contains("ok");
+        return intentMatcher.matchIntent(message, "CONFIRM");
     }
 
     /**
@@ -262,6 +248,11 @@ public class FunctionCallingChatServiceImpl implements FunctionCallingChatServic
      */
     private String processResponse(String responseText, SessionContext context) {
         try {
+            // 取消成功后清理上下文中的预约ID
+            if (responseText.contains("已取消") || responseText.contains("已成功取消")) {
+                context.setReservationId(null);
+            }
+
             // Function Calling模式下，AI返回的是自然语言
             // 我们需要从响应中判断是否创建/修改了预约
             if (responseText.contains("预约成功") && context.getReservationId() == null) {
@@ -325,7 +316,7 @@ public class FunctionCallingChatServiceImpl implements FunctionCallingChatServic
                 return "预约记录不存在";
             }
 
-            reservation.setStatus(3);
+            reservation.setStatus(BizConstants.STATUS_CANCELLED);
             reservation.setRemark("取消原因：" + context.getPendingCancelReason());
             reservationService.updateById(reservation);
 

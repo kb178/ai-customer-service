@@ -1,5 +1,6 @@
 package com.aicustomer.function;
 
+import com.aicustomer.config.BizConstants;
 import com.aicustomer.entity.Course;
 import com.aicustomer.entity.Campus;
 import com.aicustomer.entity.CampusCourse;
@@ -69,7 +70,9 @@ public class ReservationFunctions {
                 List<Long> otherCampusIds = otherCampusCourses.stream()
                         .map(CampusCourse::getCampusId)
                         .toList();
-                List<Campus> otherCampuses = campusService.listByIds(otherCampusIds);
+                List<Campus> otherCampuses = otherCampusIds.isEmpty()
+                        ? List.of()
+                        : campusService.listByIds(otherCampusIds);
 
                 StringBuilder sb = new StringBuilder();
                 sb.append("抱歉，").append(campus.getName()).append("未开设").append(course.getName()).append("课程。\n\n");
@@ -125,7 +128,11 @@ public class ReservationFunctions {
             reservation.setCampusId(request.getCampusId());
 
             if (request.getAppointmentTime() != null && !request.getAppointmentTime().isEmpty()) {
-                reservation.setAppointmentTime(LocalDateTime.parse(request.getAppointmentTime(), DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
+                String timeStr = request.getAppointmentTime().trim();
+                DateTimeFormatter formatter = timeStr.length() > 16
+                        ? DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")
+                        : DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
+                reservation.setAppointmentTime(LocalDateTime.parse(timeStr, formatter));
             } else {
                 reservation.setAppointmentTime(LocalDateTime.now().plusDays(1).withHour(10).withMinute(0));
             }
@@ -229,7 +236,7 @@ public class ReservationFunctions {
             }
 
             Integer oldStatus = reservation.getStatus();
-            reservation.setStatus(3);
+            reservation.setStatus(BizConstants.STATUS_CANCELLED);
             reservation.setRemark("取消原因：" + request.getReason());
             reservationService.updateById(reservation);
 
@@ -282,13 +289,14 @@ public class ReservationFunctions {
             Course course = reservation.getCourseId() != null ? courseService.getById(reservation.getCourseId()) : null;
             Campus campus = reservation.getCampusId() != null ? campusService.getById(reservation.getCampusId()) : null;
 
-            String statusText = switch (reservation.getStatus()) {
-                case 0 -> "待确认";
-                case 1 -> "已确认";
-                case 2 -> "已完成";
-                case 3 -> "已取消";
-                default -> "未知";
-            };
+            String statusText;
+            switch (reservation.getStatus()) {
+                case BizConstants.STATUS_PENDING: statusText = "待确认"; break;
+                case BizConstants.STATUS_CONFIRMED: statusText = "已确认"; break;
+                case BizConstants.STATUS_COMPLETED: statusText = "已完成"; break;
+                case BizConstants.STATUS_CANCELLED: statusText = "已取消"; break;
+                default: statusText = "未知";
+            }
 
             response.setFound(true);
             response.setReservationId(reservation.getId());

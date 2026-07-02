@@ -95,15 +95,15 @@ public class SessionContext {
      * @return true表示已有该信息，false表示未收集到
      */
     public boolean hasInfo(String field) {
-        return switch (field) {
-            case "name" -> customerName != null && !customerName.isEmpty();
-            case "phone" -> phone != null && !phone.isEmpty();
-            case "education" -> education != null && !education.isEmpty();
-            case "interest" -> interest != null && !interest.isEmpty();
-            case "course" -> selectedCourseId != null;
-            case "campus" -> selectedCampusId != null;
-            default -> false;
-        };
+        switch (field) {
+            case "name": return customerName != null && !customerName.isEmpty();
+            case "phone": return phone != null && !phone.isEmpty();
+            case "education": return education != null && !education.isEmpty();
+            case "interest": return interest != null && !interest.isEmpty();
+            case "course": return selectedCourseId != null;
+            case "campus": return selectedCampusId != null;
+            default: return false;
+        }
     }
 
     /**

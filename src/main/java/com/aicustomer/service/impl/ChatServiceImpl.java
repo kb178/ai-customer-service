@@ -1,5 +1,6 @@
 package com.aicustomer.service.impl;
 
+import com.aicustomer.config.BizConstants;
 import com.aicustomer.entity.Course;
 import com.aicustomer.entity.Campus;
 import com.aicustomer.entity.Reservation;
@@ -299,7 +300,7 @@ public class ChatServiceImpl implements ChatService {
             }
 
             // 更新预约状态为已取消（3），并保存取消原因
-            existingReservation.setStatus(3);
+            existingReservation.setStatus(BizConstants.STATUS_CANCELLED);
             existingReservation.setRemark("取消原因：" + reason);
             reservationService.updateById(existingReservation);
 
@@ -410,23 +411,23 @@ public class ChatServiceImpl implements ChatService {
             customer.setPhone(context.getPhone());
             customer.setEducation(context.getEducation());
             customer.setInterest(context.getInterest());
-            customer.setSource("在线客服-咨询");
+            customer.setSource(BizConstants.SOURCE_INSTRUCTION);
             customerService.saveCustomer(customer);
         }
 
         // 识别课程选择
         if (!context.hasInfo("course")) {
             if (lowerMsg.contains("java") || lowerMsg.contains("java全栈")) {
-                context.setSelectedCourseId(1L);
+                context.setSelectedCourseId(BizConstants.COURSE_JAVA_ID);
                 context.setSelectedCourseName("Java全栈开发");
             } else if (lowerMsg.contains("python") || lowerMsg.contains("数据分析")) {
-                context.setSelectedCourseId(2L);
+                context.setSelectedCourseId(BizConstants.COURSE_PYTHON_ID);
                 context.setSelectedCourseName("Python数据分析");
             } else if (lowerMsg.contains("ui") || lowerMsg.contains("ux") || lowerMsg.contains("设计")) {
-                context.setSelectedCourseId(3L);
+                context.setSelectedCourseId(BizConstants.COURSE_UI_ID);
                 context.setSelectedCourseName("UI/UX设计");
             } else if (lowerMsg.contains("人工智能") || lowerMsg.contains("ai") || lowerMsg.contains("机器学习")) {
-                context.setSelectedCourseId(4L);
+                context.setSelectedCourseId(BizConstants.COURSE_AI_ID);
                 context.setSelectedCourseName("人工智能入门");
             }
         }
@@ -434,13 +435,13 @@ public class ChatServiceImpl implements ChatService {
         // 识别校区选择
         if (!context.hasInfo("campus")) {
             if (lowerMsg.contains("中关村")) {
-                context.setSelectedCampusId(1L);
+                context.setSelectedCampusId(BizConstants.CAMPUS_ZHONGGUANCUN_ID);
                 context.setSelectedCampusName("中关村校区");
             } else if (lowerMsg.contains("国贸")) {
-                context.setSelectedCampusId(2L);
+                context.setSelectedCampusId(BizConstants.CAMPUS_GUOMAO_ID);
                 context.setSelectedCampusName("国贸校区");
             } else if (lowerMsg.contains("西直门")) {
-                context.setSelectedCampusId(3L);
+                context.setSelectedCampusId(BizConstants.CAMPUS_XIZHIMEN_ID);
                 context.setSelectedCampusName("西直门校区");
             }
         }
@@ -571,10 +572,10 @@ public class ChatServiceImpl implements ChatService {
             Campus campus = reservation.getCampusId() != null ? campusService.getById(reservation.getCampusId()) : null;
 
             String statusText = switch (reservation.getStatus()) {
-                case 0 -> "待确认";
-                case 1 -> "已确认";
-                case 2 -> "已完成";
-                case 3 -> "已取消";
+                case BizConstants.STATUS_PENDING -> "待确认";
+                case BizConstants.STATUS_CONFIRMED -> "已确认";
+                case BizConstants.STATUS_COMPLETED -> "已完成";
+                case BizConstants.STATUS_CANCELLED -> "已取消";
                 default -> "未知";
             };
 
@@ -652,7 +653,7 @@ public class ChatServiceImpl implements ChatService {
                     customer.setPhone(phone);
                     customer.setEducation(context.getEducation());
                     customer.setInterest(context.getInterest());
-                    customer.setSource("在线客服-预约");
+                    customer.setSource(BizConstants.SOURCE_RESERVATION);
                     customerService.saveCustomer(customer);
                 }
 
@@ -836,7 +837,7 @@ public class ChatServiceImpl implements ChatService {
                 customer.setEmail(jsonNode.has("email") ? jsonNode.get("email").asText() : null);
                 customer.setEducation(jsonNode.has("education") ? jsonNode.get("education").asText() : context.getEducation());
                 customer.setInterest(jsonNode.has("interest") ? jsonNode.get("interest").asText() : context.getInterest());
-                customer.setSource("在线客服");
+                customer.setSource(BizConstants.SOURCE_INSTRUCTION);
 
                 // 保存客户信息（新增或更新）
                 customerService.saveCustomer(customer);

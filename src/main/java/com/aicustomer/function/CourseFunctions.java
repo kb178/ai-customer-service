@@ -16,6 +16,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Description;
 
 import java.util.List;
+import java.util.function.Function;
 
 /**
  * 课程相关Function定义
