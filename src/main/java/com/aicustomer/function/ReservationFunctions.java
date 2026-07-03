@@ -5,6 +5,7 @@ import com.aicustomer.entity.Course;
 import com.aicustomer.entity.Campus;
 import com.aicustomer.entity.CampusCourse;
 import com.aicustomer.entity.CourseSchedule;
+import com.aicustomer.entity.Customer;
 import com.aicustomer.entity.Reservation;
 import com.aicustomer.service.*;
 import lombok.Data;
@@ -33,6 +34,7 @@ public class ReservationFunctions {
     private final CampusService campusService;
     private final CampusCourseService campusCourseService;
     private final CourseScheduleService courseScheduleService;
+    private final CustomerService customerService;
 
     /**
      * 创建预约函数
@@ -141,6 +143,15 @@ public class ReservationFunctions {
 
             // 记录日志
             reservationLogService.addLog(reservation.getId(), null, 0, "system", "创建预约");
+
+            // 保存客户信息到customer表（有电话就存）
+            if (request.getPhone() != null && !request.getPhone().isEmpty()) {
+                Customer customer = new Customer();
+                customer.setPhone(request.getPhone());
+                customer.setName(request.getCustomerName());
+                customer.setSource(BizConstants.SOURCE_RESERVATION);
+                customerService.saveCustomer(customer);
+            }
 
             // 更新校区课程学员数
             campusCourse.setCurrentStudents(campusCourse.getCurrentStudents() != null ? campusCourse.getCurrentStudents() + 1 : 1);

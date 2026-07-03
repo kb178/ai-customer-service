@@ -2,6 +2,7 @@ package com.aicustomer.service.impl;
 
 import com.aicustomer.annotation.IntentMatcher;
 import com.aicustomer.config.BizConstants;
+import com.aicustomer.config.SessionContextService;
 import com.aicustomer.entity.Course;
 import com.aicustomer.entity.Campus;
 import com.aicustomer.entity.Customer;
@@ -17,7 +18,6 @@ import org.springframework.ai.chat.model.ChatModel;
 import org.springframework.stereotype.Service;
 
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Function Calling模式的对话服务实现
@@ -39,9 +39,7 @@ public class FunctionCallingChatServiceImpl implements FunctionCallingChatServic
     private final ReservationService reservationService;
     private final CustomerService customerService;
     private final IntentMatcher intentMatcher;
-
-    /** 会话上下文存储 */
-    private final Map<String, SessionContext> sessionContexts = new ConcurrentHashMap<>();
+    private final SessionContextService sessionContextService;
 
     /** Function Calling模式的系统提示词 */
     private static final String SYSTEM_PROMPT = """
@@ -50,11 +48,13 @@ public class FunctionCallingChatServiceImpl implements FunctionCallingChatServic
             ## 最重要的规则：必须调用函数
             **当你需要执行任何操作时，必须调用对应的函数，绝对不能只回复文字！**
             - 用户要创建预约 → 必须调用 createReservation
-            - 用户要取消预约 → 必须调用 cancelReservation
-            - 用户要修改预约 → 必须调用 updateReservation
+            - 用户要取消预约 → 先调用 queryReservation 查到预约，再调用 cancelReservation 取消
+            - 用户要修改预约 → 先调用 queryReservation 查到预约，再调用 updateReservation 修改
             - 用户要查询预约 → 必须调用 queryReservation
             - 用户要查课程 → 必须调用 searchCourses
             - 用户要查校区 → 必须调用 getCampuses
+            - 用户提供了手机号 → 必须调用 queryCustomerByPhone 识别客户
+            - 用户问"我的预约" → 必须调用 listReservationsByPhone
             **只回复文字而不调用函数 = 严重错误！**
 
             ## 核心规则
@@ -62,13 +62,38 @@ public class FunctionCallingChatServiceImpl implements FunctionCallingChatServic
             2. **不要重复确认已知信息**
             3. **预约时直接使用已知信息**
 
+            ## 客户识别规则（重要！）
+            - 当用户提供了手机号（无论是否带"电话"前缀），先调用 queryCustomerByPhone 查询客户
+            - 如果查到客户，主动问候："您好，XX同学，又见面了！"
+            - 如果没查到，正常服务即可
+            - 用户说"我有哪些预约"、"我的预约"时，调用 listReservationsByPhone 查询
+
+            ## 留言规则（重要！）
+            以下情况必须调用 leaveMessage 记录留言：
+            - 学员询问退款、退费政策
+            - 学员表达不满、投诉、建议
+            - 学员问的问题超出你的知识范围（如具体合同条款、特殊优惠政策等）
+            - 学员要求转人工但你无法处理
+            - 任何你无法给出准确回答的问题
+            记录留言时，先问清楚学员的姓名和电话（如果还不知道的话），然后调用 leaveMessage。
+            记录后告诉学员："已为您记录，客服会在2小时内联系您。"
+
             ## 你的主要任务
-            1. 了解用户的兴趣、学历背景等信息
-            2. 根据用户需求推荐合适的课程
-            3. 引导用户预约试听课程
-            4. 引导用户留下联系方式
+            1. 识别回头客，提供个性化服务
+            2. 了解用户的兴趣、学历背景等信息
+            3. 根据用户需求推荐合适的课程
+            4. 引导用户预约试听课程
+            5. 引导用户留下联系方式
+            6. 无法回答时主动建议留言
 
             ## 可用函数
+
+            ### 客户相关
+            - queryCustomerByPhone: 根据手机号查询客户信息（参数：phone）
+            - listReservationsByPhone: 查询某手机号的所有预约（参数：phone）
+
+            ### 留言相关
+            - leaveMessage: 记录学员留言（参数：sessionId、customerName可选、customerPhone可选、message、category可选）
 
             ### 地区相关
             - getProvinces: 获取有校区的省份列表
@@ -90,42 +115,51 @@ public class FunctionCallingChatServiceImpl implements FunctionCallingChatServic
             - queryReservation: 查询预约信息（可按reservationId或phone查询）
 
             ## 交互流程
-            1. 用户咨询课程 → getCategories → searchCourses
-            2. 用户询问校区 → getProvinces → getCities → getCampuses
-            3. 用户问"这个校区有Python课吗" → getCampusCourses
-            4. 用户问"什么时候上课" → getCourseSchedules
-            5. 创建预约 → createReservation
-            6. 修改/取消 → queryReservation → updateReservation/cancelReservation
+            1. 用户提供手机号 → queryCustomerByPhone → 识别回头客
+            2. 用户咨询课程 → getCategories → searchCourses
+            3. 用户询问校区 → getProvinces → getCities → getCampuses
+            4. 用户问"这个校区有Python课吗" → getCampusCourses
+            5. 用户问"什么时候上课" → getCourseSchedules
+            6. 创建预约 → createReservation
+            7. 修改/取消 → queryReservation → updateReservation/cancelReservation
+            8. 用户问"我的预约" → listReservationsByPhone
+            9. 遇到无法回答的问题 → leaveMessage
 
             ## 重要提示
             - 每个校区开设的课程不同，如果校区没开设某课程，要提示用户其他校区
             - 课程有容量限制，满员时要提示
             - 修改/取消预约前先查询
+            - 涉及退款、投诉、特殊优惠等问题，不要猜测答案，直接建议留言
             """;
 
     @Override
     public String chat(String sessionId, String message) {
-        //如果sessionId存在返回对应的SessionContext，不存在就创建一个新的SessionContext
-        SessionContext context = sessionContexts.computeIfAbsent(sessionId, k -> new SessionContext());
-        //新建的赋值，已存在的覆盖
+        // 从Redis获取或创建SessionContext（支持持久化和过期清理）
+        SessionContext context = sessionContextService.getOrCreate(sessionId);
         context.setSessionId(sessionId);
-        //保存用户消息
+
+        // 保存用户消息
         context.addMessage("用户", message);
 
         // 检查用户是否确认了预约修改/取消
         if (context.getPendingUpdate() != null && isConfirmMessage(message)) {
             String result = executePendingUpdate(context);
             context.addMessage("助手", result);
+            sessionContextService.save(sessionId, context);
             return result;
         }
         if (context.getPendingCancelReason() != null && isConfirmMessage(message)) {
             String result = executePendingCancel(context);
             context.addMessage("助手", result);
+            sessionContextService.save(sessionId, context);
             return result;
         }
 
         // 提取用户信息
         extractInfoFromMessage(message, context);
+
+        // 持久化上下文（提取信息后）
+        sessionContextService.save(sessionId, context);
 
         // 构建系统提示词（包含已知信息）
         String systemMessage = buildSystemMessage(context);
@@ -139,7 +173,11 @@ public class FunctionCallingChatServiceImpl implements FunctionCallingChatServic
                     // 地区相关
                     "getProvinces", "getCities", "getCampuses",
                     // 预约相关
-                    "createReservation", "updateReservation", "cancelReservation", "queryReservation"
+                    "createReservation", "updateReservation", "cancelReservation", "queryReservation",
+                    // 客户相关
+                    "queryCustomerByPhone", "listReservationsByPhone",
+                    // 留言相关
+                    "leaveMessage"
                 )
                 .build();
 
@@ -156,6 +194,10 @@ public class FunctionCallingChatServiceImpl implements FunctionCallingChatServic
         String processedResponse = processResponse(responseText, context);
 
         context.addMessage("助手", processedResponse);
+
+        // 持久化上下文（响应处理后）
+        sessionContextService.save(sessionId, context);
+
         return processedResponse;
     }
 
@@ -189,23 +231,30 @@ public class FunctionCallingChatServiceImpl implements FunctionCallingChatServic
             context.setEducation(entities.get("education"));
         }
 
-        // 姓名提取（正则，注解不易表达）
+        // 电话提取——优先有前缀，兜底裸手机号
+        if (!context.hasInfo("phone")) {
+            java.util.regex.Matcher phoneMatcher = java.util.regex.Pattern.compile(
+                    "(?:电话|手机|联系方式|号码|tel)[\\s:：]*(1[3-9]\\d{9})"
+            ).matcher(message);
+            if (phoneMatcher.find()) {
+                context.setPhone(phoneMatcher.group(1));
+            } else {
+                java.util.regex.Matcher bareMatcher = java.util.regex.Pattern.compile(
+                        "(?<![\\d])(1[3-9]\\d{9})(?![\\d])"
+                ).matcher(message);
+                if (bareMatcher.find()) {
+                    context.setPhone(bareMatcher.group(1));
+                }
+            }
+        }
+
+        // 姓名提取——只从明确表达中提取，不猜测
         if (!context.hasInfo("name")) {
             java.util.regex.Matcher nameMatcher = java.util.regex.Pattern.compile(
                     "(?:我叫|我是|我姓|名字是|姓名是|叫我)[\\s]*([\\u4e00-\\u9fa5]{2,4})"
             ).matcher(message);
             if (nameMatcher.find()) {
                 context.setCustomerName(nameMatcher.group(1));
-            }
-        }
-
-        // 电话提取（正则）
-        if (!context.hasInfo("phone")) {
-            java.util.regex.Matcher phoneMatcher = java.util.regex.Pattern.compile(
-                    "(?:电话|手机|联系方式|号码)[\\s:：]*(1[3-9]\\d{9})"
-            ).matcher(message);
-            if (phoneMatcher.find()) {
-                context.setPhone(phoneMatcher.group(1));
             }
         }
 
@@ -227,11 +276,11 @@ public class FunctionCallingChatServiceImpl implements FunctionCallingChatServic
             }
         }
 
-        // 保存客户信息
-        if (context.hasInfo("name") && context.hasInfo("phone")) {
+        // 保存客户信息——有电话就存，姓名可以后续补全
+        if (context.hasInfo("phone")) {
             Customer customer = new Customer();
-            customer.setName(context.getCustomerName());
             customer.setPhone(context.getPhone());
+            customer.setName(context.getCustomerName());
             customer.setEducation(context.getEducation());
             customer.setInterest(context.getInterest());
             customer.setSource(BizConstants.SOURCE_FUNCTION_CALLING);

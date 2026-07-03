@@ -1,15 +1,19 @@
 package com.aicustomer.entity;
 
 import lombok.Data;
+
+import java.io.Serializable;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * 会话上下文实体类
- * 
+ *
  * 功能：保存用户对话过程中的上下文信息，实现多轮对话记忆
- * 
+ *
  * 主要作用：
  * - 记录用户已提供的信息（姓名、电话、学历等）
  * - 记录用户选择的课程和校区
@@ -17,7 +21,9 @@ import java.util.List;
  * - 保存对话历史，提供上下文给AI
  */
 @Data
-public class SessionContext {
+public class SessionContext implements Serializable {
+
+    private static final long serialVersionUID = 1L;
 
     /** 会话ID（唯一标识一次对话） */
     private String sessionId;
@@ -56,7 +62,7 @@ public class SessionContext {
     private Long reservationId;
 
     /** 待确认的修改数据（修改预约时暂存，确认后才保存到数据库） */
-    private java.util.Map<String, Object> pendingUpdate;
+    private Map<String, Object> pendingUpdate;
 
     /** 待确认的取消预约操作（暂存取消原因，确认后才保存到数据库） */
     private String pendingCancelReason;
@@ -67,16 +73,27 @@ public class SessionContext {
     /** 会话创建时间 */
     private LocalDateTime createTime;
 
+    /** 最后活跃时间（用于过期判断） */
+    private LocalDateTime lastActiveTime;
+
     /**
      * 构造函数 - 初始化会话创建时间
      */
     public SessionContext() {
         this.createTime = LocalDateTime.now();
+        this.lastActiveTime = LocalDateTime.now();
+    }
+
+    /**
+     * 更新最后活跃时间
+     */
+    public void touch() {
+        this.lastActiveTime = LocalDateTime.now();
     }
 
     /**
      * 添加对话消息到历史记录
-     * 
+     *
      * @param role 角色（用户/助手）
      * @param content 消息内容
      */
@@ -86,11 +103,12 @@ public class SessionContext {
         if (conversationHistory.size() > 20) {
             conversationHistory = new ArrayList<>(conversationHistory.subList(conversationHistory.size() - 20, conversationHistory.size()));
         }
+        touch();
     }
 
     /**
      * 检查是否已收集到指定信息
-     * 
+     *
      * @param field 字段名（name/phone/education/interest/course/campus）
      * @return true表示已有该信息，false表示未收集到
      */
@@ -108,9 +126,9 @@ public class SessionContext {
 
     /**
      * 获取已知用户信息摘要
-     * 
+     *
      * 功能：生成已收集信息的文本摘要，用于注入到AI系统提示词
-     * 
+     *
      * @return 信息摘要字符串
      */
     public String getKnownInfoSummary() {
@@ -133,9 +151,9 @@ public class SessionContext {
 
     /**
      * 获取预约所需但缺失的信息
-     * 
+     *
      * 功能：检查创建预约所需的信息是否齐全，返回缺失项
-     * 
+     *
      * @return 缺失信息提示字符串，如果信息齐全则返回空字符串
      */
     public String getMissingInfoForReservation() {
