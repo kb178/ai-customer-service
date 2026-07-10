@@ -40,6 +40,7 @@ public class FunctionCallingChatServiceImpl implements FunctionCallingChatServic
     private final CustomerService customerService;
     private final IntentMatcher intentMatcher;
     private final SessionContextService sessionContextService;
+    private final ConversationLogService conversationLogService;
 
     /** Function Calling模式的系统提示词 */
     private static final String SYSTEM_PROMPT = """
@@ -146,12 +147,20 @@ public class FunctionCallingChatServiceImpl implements FunctionCallingChatServic
             String result = executePendingUpdate(context);
             context.addMessage("助手", result);
             sessionContextService.save(sessionId, context);
+            // 写入对话记录
+            String phone1 = context.getPhone();
+            conversationLogService.saveLog(sessionId, phone1, "user", message);
+            conversationLogService.saveLog(sessionId, phone1, "assistant", result);
             return result;
         }
         if (context.getPendingCancelReason() != null && isConfirmMessage(message)) {
             String result = executePendingCancel(context);
             context.addMessage("助手", result);
             sessionContextService.save(sessionId, context);
+            // 写入对话记录
+            String phone2 = context.getPhone();
+            conversationLogService.saveLog(sessionId, phone2, "user", message);
+            conversationLogService.saveLog(sessionId, phone2, "assistant", result);
             return result;
         }
 
@@ -197,6 +206,11 @@ public class FunctionCallingChatServiceImpl implements FunctionCallingChatServic
 
         // 持久化上下文（响应处理后）
         sessionContextService.save(sessionId, context);
+
+        // 写入对话记录
+        String phone3 = context.getPhone();
+        conversationLogService.saveLog(sessionId, phone3, "user", message);
+        conversationLogService.saveLog(sessionId, phone3, "assistant", processedResponse);
 
         return processedResponse;
     }
@@ -260,7 +274,7 @@ public class FunctionCallingChatServiceImpl implements FunctionCallingChatServic
 
         // 课程：从数据库动态匹配
         if (!context.hasInfo("course") && entities.containsKey("course")) {
-            com.aicustomer.entity.Course matched = intentMatcher.lookupCourse(entities.get("course"));
+            Course matched = intentMatcher.lookupCourse(entities.get("course"));
             if (matched != null) {
                 context.setSelectedCourseId(matched.getId());
                 context.setSelectedCourseName(matched.getName());
@@ -269,7 +283,7 @@ public class FunctionCallingChatServiceImpl implements FunctionCallingChatServic
 
         // 校区：从数据库动态匹配
         if (!context.hasInfo("campus") && entities.containsKey("campus")) {
-            com.aicustomer.entity.Campus matched = intentMatcher.lookupCampus(entities.get("campus"));
+            Campus matched = intentMatcher.lookupCampus(entities.get("campus"));
             if (matched != null) {
                 context.setSelectedCampusId(matched.getId());
                 context.setSelectedCampusName(matched.getName());

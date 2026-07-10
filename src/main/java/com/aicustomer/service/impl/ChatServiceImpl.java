@@ -222,7 +222,7 @@ public class ChatServiceImpl implements ChatService {
      */
     private String executePendingUpdate(SessionContext context) {
         try {
-            java.util.Map<String, Object> pendingData = context.getPendingUpdate();
+            Map<String, Object> pendingData = context.getPendingUpdate();
             Long reservationId = context.getReservationId();
 
             Reservation existingReservation = reservationService.getById(reservationId);
@@ -703,7 +703,7 @@ public class ChatServiceImpl implements ChatService {
                 }
 
                 // 构建待确认的修改数据
-                java.util.Map<String, Object> pendingUpdate = new java.util.HashMap<>();
+                Map<String, Object> pendingUpdate = new java.util.HashMap<>();
 
                 // 构建修改前的信息
                 StringBuilder previewMsg = new StringBuilder();

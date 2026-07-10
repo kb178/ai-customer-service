@@ -15,7 +15,7 @@
 - 新增/编辑使用 `el-dialog` + `el-form` 弹窗表单
 - 删除使用 `el-popconfirm` 二次确认
 - 搜索使用 `el-input` + `el-select` + `el-button`
-- 所有 API 调用封装在 `src/api/` 目录下
+- 所有 API 调用封装在 `src/main/resources/admin-frontend/src/api/` 目录下
 - 使用 `<script setup>` 语法
 
 ## API 封装模板
@@ -23,7 +23,7 @@
 每个模块的 API 文件格式统一：
 
 ```javascript
-// src/api/xxx.js
+// src/main/resources/admin-frontend/src/api/xxx.js
 import request from './request'
 
 export function getXxxList(params) {
@@ -230,29 +230,29 @@ export function deleteXxx(id) {
 ### 新建 API 文件
 | 文件 | 说明 |
 |------|------|
-| src/api/course.js | 课程 API |
-| src/api/campus.js | 校区 API |
-| src/api/reservation.js | 预约 API |
-| src/api/customer.js | 客户 API |
-| src/api/conversation.js | 对话记录 API |
-| src/api/leaveMessage.js | 留言 API |
-| src/api/faq.js | FAQ API |
-| src/api/prompt.js | 提示词 API |
-| src/api/statistics.js | 统计 API |
+| src/main/resources/admin-frontend/src/api/course.js | 课程 API |
+| src/main/resources/admin-frontend/src/api/campus.js | 校区 API |
+| src/main/resources/admin-frontend/src/api/reservation.js | 预约 API |
+| src/main/resources/admin-frontend/src/api/customer.js | 客户 API |
+| src/main/resources/admin-frontend/src/api/conversation.js | 对话记录 API |
+| src/main/resources/admin-frontend/src/api/leaveMessage.js | 留言 API |
+| src/main/resources/admin-frontend/src/api/faq.js | FAQ API |
+| src/main/resources/admin-frontend/src/api/prompt.js | 提示词 API |
+| src/main/resources/admin-frontend/src/api/statistics.js | 统计 API |
 
 ### 替换占位页面
 | 文件 | 说明 |
 |------|------|
-| src/views/course/CourseList.vue | 课程管理（替换占位） |
-| src/views/campus/CampusList.vue | 校区管理（替换占位） |
-| src/views/reservation/ReservationList.vue | 预约管理（替换占位） |
-| src/views/customer/CustomerList.vue | 客户管理（替换占位） |
-| src/views/conversation/ConversationList.vue | 对话列表（替换占位） |
-| src/views/conversation/ConversationDetail.vue | 对话详情（替换占位） |
-| src/views/leaveMessage/LeaveMessageList.vue | 留言管理（替换占位） |
-| src/views/faq/FaqList.vue | FAQ管理（替换占位） |
-| src/views/prompt/PromptEdit.vue | 提示词管理（替换占位） |
-| src/views/Dashboard.vue | 统计面板（替换占位） |
+| src/main/resources/admin-frontend/src/views/course/CourseList.vue | 课程管理（替换占位） |
+| src/main/resources/admin-frontend/src/views/campus/CampusList.vue | 校区管理（替换占位） |
+| src/main/resources/admin-frontend/src/views/reservation/ReservationList.vue | 预约管理（替换占位） |
+| src/main/resources/admin-frontend/src/views/customer/CustomerList.vue | 客户管理（替换占位） |
+| src/main/resources/admin-frontend/src/views/conversation/ConversationList.vue | 对话列表（替换占位） |
+| src/main/resources/admin-frontend/src/views/conversation/ConversationDetail.vue | 对话详情（替换占位） |
+| src/main/resources/admin-frontend/src/views/leaveMessage/LeaveMessageList.vue | 留言管理（替换占位） |
+| src/main/resources/admin-frontend/src/views/faq/FaqList.vue | FAQ管理（替换占位） |
+| src/main/resources/admin-frontend/src/views/prompt/PromptEdit.vue | 提示词管理（替换占位） |
+| src/main/resources/admin-frontend/src/views/Dashboard.vue | 统计面板（替换占位） |
 
 ## 注意事项
 

@@ -3,758 +3,506 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>智能客服</title>
+    <title>黑牛程序员 - 让技术改变命运</title>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
+        /* ========== Reset & Base ========== */
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html { scroll-behavior: smooth; }
         body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            padding: 20px;
+            font-family: 'PingFang SC', 'Microsoft YaHei', -apple-system, BlinkMacSystemFont, sans-serif;
+            color: #fff;
+            background: #0a0a0a;
+            overflow-x: hidden;
+        }
+        a { text-decoration: none; color: inherit; }
+        ul { list-style: none; }
+
+        /* ========== 导航栏 ========== */
+        .navbar {
+            position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+            padding: 0 60px; height: 72px;
+            display: flex; align-items: center; justify-content: space-between;
+            background: rgba(10, 10, 10, 0.85);
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid rgba(255,255,255,0.06);
+            transition: all 0.3s;
+        }
+        .navbar.scrolled { background: rgba(10,10,10,0.95); box-shadow: 0 2px 20px rgba(0,0,0,0.3); }
+        .nav-logo { display: flex; align-items: center; gap: 12px; font-size: 20px; font-weight: 700; }
+        .nav-logo .logo-icon {
+            width: 40px; height: 40px; border-radius: 12px;
+            background: linear-gradient(135deg, #00d4ff, #7b2ff7);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 18px; font-weight: 900;
+        }
+        .nav-links { display: flex; gap: 36px; }
+        .nav-links a { font-size: 15px; color: rgba(255,255,255,0.7); transition: color 0.3s; position: relative; }
+        .nav-links a:hover { color: #fff; }
+        .nav-links a::after {
+            content: ''; position: absolute; bottom: -4px; left: 0; right: 0;
+            height: 2px; background: #00d4ff; transform: scaleX(0); transition: transform 0.3s;
+        }
+        .nav-links a:hover::after { transform: scaleX(1); }
+        .nav-cta {
+            padding: 10px 24px; border-radius: 8px; font-size: 14px; font-weight: 600;
+            background: linear-gradient(135deg, #00d4ff, #7b2ff7);
+            cursor: pointer; transition: all 0.3s; border: none; color: #fff;
+        }
+        .nav-cta:hover { transform: translateY(-2px); box-shadow: 0 4px 20px rgba(0,212,255,0.3); }
+
+        /* ========== Hero ========== */
+        .hero {
+            min-height: 100vh; display: flex; align-items: center; justify-content: center;
+            padding: 120px 60px 80px; position: relative; text-align: center;
+            background: radial-gradient(ellipse at 50% 0%, rgba(0,212,255,0.08) 0%, transparent 60%),
+                        radial-gradient(ellipse at 80% 80%, rgba(123,47,247,0.06) 0%, transparent 50%);
+        }
+        .hero::before {
+            content: ''; position: absolute; inset: 0;
+            background: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.02'%3E%3Ccircle cx='30' cy='30' r='1'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+        }
+        .hero-content { position: relative; z-index: 1; max-width: 900px; }
+        .hero-badge {
+            display: inline-flex; align-items: center; gap: 8px;
+            padding: 8px 20px; border-radius: 50px; margin-bottom: 32px;
+            background: rgba(0,212,255,0.1); border: 1px solid rgba(0,212,255,0.2);
+            font-size: 14px; color: #00d4ff;
+        }
+        .hero-badge .dot { width: 6px; height: 6px; background: #00d4ff; border-radius: 50%; animation: blink 2s infinite; }
+        @keyframes blink { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }
+        .hero h1 {
+            font-size: 64px; font-weight: 800; line-height: 1.2; margin-bottom: 24px;
+            background: linear-gradient(135deg, #fff 0%, rgba(255,255,255,0.7) 100%);
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+        }
+        .hero h1 .highlight {
+            background: linear-gradient(135deg, #00d4ff, #7b2ff7);
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+        }
+        .hero p { font-size: 18px; color: rgba(255,255,255,0.5); line-height: 1.8; margin-bottom: 48px; }
+        .hero-buttons { display: flex; gap: 16px; justify-content: center; flex-wrap: wrap; }
+        .btn-primary {
+            padding: 16px 40px; border-radius: 12px; font-size: 16px; font-weight: 600;
+            background: linear-gradient(135deg, #00d4ff, #7b2ff7);
+            cursor: pointer; transition: all 0.3s; border: none; color: #fff;
+        }
+        .btn-primary:hover { transform: translateY(-3px); box-shadow: 0 8px 30px rgba(0,212,255,0.3); }
+        .btn-outline {
+            padding: 16px 40px; border-radius: 12px; font-size: 16px; font-weight: 600;
+            background: transparent; border: 1.5px solid rgba(255,255,255,0.2);
+            cursor: pointer; transition: all 0.3s; color: #fff;
+        }
+        .btn-outline:hover { border-color: #00d4ff; color: #00d4ff; transform: translateY(-3px); }
+
+        /* 滚动提示 */
+        .scroll-hint {
+            position: absolute; bottom: 40px; left: 50%; transform: translateX(-50%);
+            display: flex; flex-direction: column; align-items: center; gap: 8px;
+            color: rgba(255,255,255,0.3); font-size: 12px; animation: float 2s ease-in-out infinite;
+        }
+        @keyframes float { 0%,100% { transform: translateX(-50%) translateY(0); } 50% { transform: translateX(-50%) translateY(8px); } }
+
+        /* ========== 通用 Section ========== */
+        section { padding: 120px 60px; }
+        .section-header { text-align: center; margin-bottom: 64px; }
+        .section-tag {
+            display: inline-block; padding: 6px 16px; border-radius: 50px; margin-bottom: 16px;
+            background: rgba(0,212,255,0.1); border: 1px solid rgba(0,212,255,0.15);
+            font-size: 13px; color: #00d4ff; letter-spacing: 2px;
+        }
+        .section-header h2 { font-size: 40px; font-weight: 700; margin-bottom: 16px; }
+        .section-header p { font-size: 16px; color: rgba(255,255,255,0.4); max-width: 600px; margin: 0 auto; }
+
+        /* ========== 课程卡片 ========== */
+        .courses-grid {
+            display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 24px; max-width: 1200px; margin: 0 auto;
+        }
+        .course-card {
+            background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06);
+            border-radius: 20px; padding: 36px 28px; transition: all 0.4s;
+            position: relative; overflow: hidden; cursor: default;
+        }
+        .course-card::before {
+            content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px;
+            background: linear-gradient(90deg, var(--card-color, #00d4ff), transparent);
+            opacity: 0; transition: opacity 0.4s;
+        }
+        .course-card:hover { transform: translateY(-8px); border-color: rgba(255,255,255,0.12);
+            background: rgba(255,255,255,0.05); box-shadow: 0 20px 40px rgba(0,0,0,0.3); }
+        .course-card:hover::before { opacity: 1; }
+        .course-icon {
+            width: 56px; height: 56px; border-radius: 16px; margin-bottom: 20px;
+            display: flex; align-items: center; justify-content: center; font-size: 28px;
+            background: linear-gradient(135deg, var(--card-color, #00d4ff), rgba(0,0,0,0));
+        }
+        .course-card h3 { font-size: 20px; font-weight: 600; margin-bottom: 12px; }
+        .course-card p { font-size: 14px; color: rgba(255,255,255,0.4); line-height: 1.7; margin-bottom: 20px; }
+        .course-meta { display: flex; justify-content: space-between; align-items: center; }
+        .course-price { font-size: 22px; font-weight: 700; color: #00d4ff; }
+        .course-price span { font-size: 13px; font-weight: 400; color: rgba(255,255,255,0.3); }
+        .course-tag {
+            padding: 4px 12px; border-radius: 6px; font-size: 12px;
+            background: rgba(0,212,255,0.1); color: #00d4ff;
         }
 
-        .chat-container {
-            width: 100%;
-            max-width: 800px;
-            height: 90vh;
-            background: #fff;
-            border-radius: 20px;
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-            display: flex;
-            flex-direction: column;
-            overflow: hidden;
+        /* ========== 优势 ========== */
+        .advantages { background: linear-gradient(180deg, rgba(0,212,255,0.02) 0%, transparent 100%); }
+        .adv-grid {
+            display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 32px; max-width: 1200px; margin: 0 auto;
+        }
+        .adv-item { text-align: center; padding: 40px 24px; }
+        .adv-num {
+            font-size: 56px; font-weight: 800; margin-bottom: 8px;
+            background: linear-gradient(135deg, #00d4ff, #7b2ff7);
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+        }
+        .adv-item h3 { font-size: 18px; font-weight: 600; margin-bottom: 12px; }
+        .adv-item p { font-size: 14px; color: rgba(255,255,255,0.4); line-height: 1.6; }
+
+        /* ========== 校区 ========== */
+        .campuses-grid {
+            display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 24px; max-width: 1200px; margin: 0 auto;
+        }
+        .campus-card {
+            background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06);
+            border-radius: 20px; padding: 32px; transition: all 0.3s;
+        }
+        .campus-card:hover { border-color: rgba(0,212,255,0.2); transform: translateY(-4px); }
+        .campus-card h3 { font-size: 20px; font-weight: 600; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
+        .campus-card .addr { font-size: 14px; color: rgba(255,255,255,0.4); margin-bottom: 8px; }
+        .campus-card .hours { font-size: 13px; color: #00d4ff; }
+
+        /* ========== CTA ========== */
+        .cta-section {
+            text-align: center; padding: 120px 60px;
+            background: radial-gradient(ellipse at 50% 50%, rgba(0,212,255,0.06) 0%, transparent 70%);
+        }
+        .cta-section h2 { font-size: 44px; font-weight: 700; margin-bottom: 20px; }
+        .cta-section p { font-size: 16px; color: rgba(255,255,255,0.4); margin-bottom: 40px; }
+
+        /* ========== Footer ========== */
+        .footer {
+            padding: 60px 60px 30px; border-top: 1px solid rgba(255,255,255,0.06);
+        }
+        .footer-content {
+            display: flex; justify-content: space-between; align-items: flex-start;
+            max-width: 1200px; margin: 0 auto; flex-wrap: wrap; gap: 40px; margin-bottom: 40px;
+        }
+        .footer-brand .logo { font-size: 20px; font-weight: 700; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
+        .footer-brand p { font-size: 14px; color: rgba(255,255,255,0.3); max-width: 280px; line-height: 1.6; }
+        .footer-links h4 { font-size: 14px; font-weight: 600; margin-bottom: 16px; color: rgba(255,255,255,0.6); }
+        .footer-links a { display: block; font-size: 14px; color: rgba(255,255,255,0.3); margin-bottom: 10px; transition: color 0.3s; }
+        .footer-links a:hover { color: #00d4ff; }
+        .footer-bottom {
+            text-align: center; padding-top: 24px;
+            border-top: 1px solid rgba(255,255,255,0.04);
+            font-size: 13px; color: rgba(255,255,255,0.2);
         }
 
-        .chat-header {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 20px 25px;
-            display: flex;
-            align-items: center;
-            gap: 15px;
+        /* ========== 浮动客服按钮 ========== */
+        .chat-fab {
+            position: fixed; bottom: 32px; right: 32px; z-index: 200;
+            width: 64px; height: 64px; border-radius: 50%; border: none;
+            background: linear-gradient(135deg, #00d4ff, #7b2ff7);
+            color: #fff; font-size: 28px; cursor: pointer;
+            box-shadow: 0 8px 30px rgba(0,212,255,0.3);
+            transition: all 0.3s; display: flex; align-items: center; justify-content: center;
         }
-
-        .chat-header .avatar {
-            width: 50px;
-            height: 50px;
-            background: rgba(255, 255, 255, 0.2);
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 24px;
+        .chat-fab:hover { transform: scale(1.1); box-shadow: 0 12px 40px rgba(0,212,255,0.4); }
+        .chat-fab .pulse-ring {
+            position: absolute; width: 100%; height: 100%;
+            border-radius: 50%; border: 2px solid #00d4ff;
+            animation: fabPulse 2s infinite;
         }
-
-        .chat-header .info h3 {
-            font-size: 18px;
-            font-weight: 600;
+        @keyframes fabPulse { 0% { transform: scale(1); opacity: 0.6; } 100% { transform: scale(1.6); opacity: 0; } }
+        .chat-fab-tooltip {
+            position: fixed; bottom: 108px; right: 24px; z-index: 200;
+            background: rgba(0,0,0,0.8); backdrop-filter: blur(10px);
+            padding: 10px 18px; border-radius: 10px; font-size: 14px;
+            color: #fff; white-space: nowrap;
+            animation: tooltipIn 0.5s ease 1s both;
         }
+        @keyframes tooltipIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
 
-        .chat-header .info p {
-            font-size: 13px;
-            opacity: 0.9;
+        /* ========== 客服弹窗 ========== */
+        .chat-popup-overlay {
+            position: fixed; inset: 0; z-index: 300; background: rgba(0,0,0,0.5);
+            backdrop-filter: blur(4px); opacity: 0; visibility: hidden; transition: all 0.3s;
         }
-
-        .chat-header .status {
-            margin-left: auto;
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            font-size: 13px;
+        .chat-popup-overlay.open { opacity: 1; visibility: visible; }
+        .chat-popup {
+            position: fixed; bottom: 24px; right: 24px; z-index: 301;
+            width: 420px; height: 600px; border-radius: 20px; overflow: hidden;
+            background: #fff; box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            transform: scale(0.8) translateY(20px); opacity: 0; visibility: hidden;
+            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+            display: flex; flex-direction: column;
         }
-
-        .chat-header .status::before {
-            content: '';
-            width: 8px;
-            height: 8px;
-            background: #4ade80;
-            border-radius: 50%;
-            animation: pulse 2s infinite;
+        .chat-popup.open { transform: scale(1) translateY(0); opacity: 1; visibility: visible; }
+        .chat-popup-header {
+            padding: 18px 20px; display: flex; align-items: center; gap: 12px;
+            background: linear-gradient(135deg, #0a0a0a, #1a1a2e);
+            color: #fff; flex-shrink: 0;
         }
-
-        @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.5; }
+        .chat-popup-header .avatar {
+            width: 42px; height: 42px; border-radius: 12px;
+            background: linear-gradient(135deg, #00d4ff, #7b2ff7);
+            display: flex; align-items: center; justify-content: center; font-size: 20px;
         }
-
-        .mode-switch {
-            margin-left: auto;
-            display: flex;
-            gap: 6px;
-            background: rgba(255, 255, 255, 0.2);
-            padding: 4px;
-            border-radius: 8px;
+        .chat-popup-header .info h3 { font-size: 16px; font-weight: 600; }
+        .chat-popup-header .info p { font-size: 12px; color: rgba(255,255,255,0.5); }
+        .chat-popup-header .close-btn {
+            margin-left: auto; width: 32px; height: 32px; border-radius: 8px;
+            background: rgba(255,255,255,0.1); border: none; color: #fff;
+            cursor: pointer; font-size: 16px; transition: background 0.3s;
+            display: flex; align-items: center; justify-content: center;
         }
+        .chat-popup-header .close-btn:hover { background: rgba(255,255,255,0.2); }
+        .chat-popup-body { flex: 1; overflow: hidden; }
+        .chat-popup-body iframe { width: 100%; height: 100%; border: none; }
 
-        .mode-btn {
-            padding: 6px 12px;
-            border: none;
-            border-radius: 6px;
-            font-size: 12px;
-            cursor: pointer;
-            background: transparent;
-            color: rgba(255, 255, 255, 0.8);
-            transition: all 0.2s;
-        }
-
-        .mode-btn.active {
-            background: white;
-            color: #667eea;
-            font-weight: 600;
-        }
-
-        .mode-btn:hover:not(.active) {
-            background: rgba(255, 255, 255, 0.1);
-        }
-
-        .mode-label {
-            font-size: 11px;
-            color: #94a3b8;
-            text-align: center;
-            padding: 4px;
-            background: #f1f5f9;
-            border-radius: 4px;
-            margin-bottom: 10px;
-        }
-
-        .chat-messages {
-            flex: 1;
-            overflow-y: auto;
-            padding: 20px;
-            background: #f8fafc;
-        }
-
-        .message {
-            display: flex;
-            gap: 12px;
-            margin-bottom: 20px;
-            animation: fadeIn 0.3s ease;
-        }
-
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-
-        .message.user {
-            flex-direction: row-reverse;
-        }
-
-        .message .msg-avatar {
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 18px;
-            flex-shrink: 0;
-        }
-
-        .message.bot .msg-avatar {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-        }
-
-        .message.user .msg-avatar {
-            background: #e2e8f0;
-        }
-
-        .message .msg-content {
-            max-width: 70%;
-        }
-
-        .message .msg-bubble {
-            padding: 14px 18px;
-            border-radius: 18px;
-            line-height: 1.6;
-            font-size: 14px;
-            word-wrap: break-word;
-        }
-
-        .message.bot .msg-bubble {
-            background: white;
-            color: #334155;
-            border-bottom-left-radius: 4px;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
-        }
-
-        .message.user .msg-bubble {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            border-bottom-right-radius: 4px;
-        }
-
-        .message .msg-time {
-            font-size: 11px;
-            color: #94a3b8;
-            margin-top: 6px;
-            padding: 0 4px;
-        }
-
-        .message.user .msg-time {
-            text-align: right;
-        }
-
-        .message table {
-            width: 100%;
-            border-collapse: collapse;
-            margin: 10px 0;
-            font-size: 13px;
-            background: white;
-            border-radius: 8px;
-            overflow: hidden;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
-        }
-
-        .message table th {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 10px 12px;
-            text-align: left;
-            font-weight: 500;
-        }
-
-        .message table td {
-            padding: 10px 12px;
-            border-bottom: 1px solid #e2e8f0;
-            color: #475569;
-        }
-
-        .message table tr:last-child td {
-            border-bottom: none;
-        }
-
-        .message table tr:hover td {
-            background: #f8fafc;
-        }
-
-        .chat-input {
-            padding: 20px;
-            background: white;
-            border-top: 1px solid #e2e8f0;
-        }
-
-        .input-wrapper {
-            display: flex;
-            gap: 12px;
-            align-items: flex-end;
-        }
-
-        .chat-input textarea {
-            flex: 1;
-            padding: 14px 18px;
-            border: 2px solid #e2e8f0;
-            border-radius: 24px;
-            font-size: 14px;
-            resize: none;
-            min-height: 48px;
-            max-height: 120px;
-            font-family: inherit;
-            transition: border-color 0.2s, box-shadow 0.2s;
-            outline: none;
-        }
-
-        .chat-input textarea:focus {
-            border-color: #667eea;
-            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
-        }
-
-        .chat-input textarea::placeholder {
-            color: #94a3b8;
-        }
-
-        .send-btn {
-            width: 48px;
-            height: 48px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            border: none;
-            border-radius: 50%;
-            color: white;
-            font-size: 20px;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: transform 0.2s, box-shadow 0.2s;
-        }
-
-        .send-btn:hover {
-            transform: scale(1.05);
-            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
-        }
-
-        .send-btn:active {
-            transform: scale(0.95);
-        }
-
-        .send-btn:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-            transform: none;
-        }
-
-        .typing-indicator {
-            display: none;
-            gap: 12px;
-            margin-bottom: 20px;
-        }
-
-        .typing-indicator.active {
-            display: flex;
-        }
-
-        .typing-indicator .dots {
-            background: white;
-            padding: 14px 18px;
-            border-radius: 18px;
-            border-bottom-left-radius: 4px;
-            display: flex;
-            gap: 4px;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
-        }
-
-        .typing-indicator .dots span {
-            width: 8px;
-            height: 8px;
-            background: #94a3b8;
-            border-radius: 50%;
-            animation: bounce 1.4s infinite ease-in-out;
-        }
-
-        .typing-indicator .dots span:nth-child(1) { animation-delay: -0.32s; }
-        .typing-indicator .dots span:nth-child(2) { animation-delay: -0.16s; }
-
-        @keyframes bounce {
-            0%, 80%, 100% { transform: scale(0); }
-            40% { transform: scale(1); }
-        }
-
-        .quick-replies {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 8px;
-            margin-top: 10px;
-        }
-
-        .quick-reply-btn {
-            padding: 8px 16px;
-            background: #f1f5f9;
-            border: 1px solid #e2e8f0;
-            border-radius: 20px;
-            font-size: 13px;
-            color: #64748b;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-
-        .quick-reply-btn:hover {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            border-color: transparent;
-        }
-
-        .welcome-msg {
-            text-align: center;
-            padding: 40px 20px;
-            color: #64748b;
-        }
-
-        .welcome-msg .emoji {
-            font-size: 48px;
-            margin-bottom: 15px;
-        }
-
-        .welcome-msg h4 {
-            font-size: 18px;
-            color: #334155;
-            margin-bottom: 10px;
-        }
-
-        .welcome-msg p {
-            font-size: 14px;
-            line-height: 1.6;
+        /* ========== 响应式 ========== */
+        @media (max-width: 768px) {
+            .navbar { padding: 0 20px; }
+            .nav-links { display: none; }
+            .hero { padding: 120px 20px 60px; }
+            .hero h1 { font-size: 36px; }
+            .hero p { font-size: 15px; }
+            section { padding: 80px 20px; }
+            .section-header h2 { font-size: 28px; }
+            .chat-popup { width: calc(100vw - 16px); height: calc(100vh - 80px); right: 8px; bottom: 8px; border-radius: 16px; }
         }
     </style>
 </head>
 <body>
-    <div class="chat-container">
-        <div class="chat-header">
-            <div class="avatar">🤖</div>
-            <div class="info">
-                <h3>智能课程顾问</h3>
-                <p>为您推荐最适合的课程</p>
-            </div>
-            <div class="mode-switch">
-                <button class="mode-btn active" id="modeInstruction" onclick="switchMode('instruction')">指令解析</button>
-                <button class="mode-btn" id="modeFunction" onclick="switchMode('function')">Function Calling</button>
-            </div>
-            <div class="status">在线</div>
+
+    <!-- 导航栏 -->
+    <nav class="navbar" id="navbar">
+        <div class="nav-logo">
+            <div class="logo-icon">黑</div>
+            <span>黑牛程序员</span>
         </div>
+        <div class="nav-links">
+            <a href="#courses">课程体系</a>
+            <a href="#advantages">我们的优势</a>
+            <a href="#campuses">校区分布</a>
+        </div>
+        <button class="nav-cta" onclick="openChat()">免费咨询</button>
+    </nav>
 
-        <div class="chat-messages" id="chatMessages">
-            <div class="welcome-msg">
-                <div class="emoji">👋</div>
-                <h4>您好！我是智能课程顾问</h4>
-                <p>我可以帮您了解课程信息、推荐适合您的课程、预约试听等。<br>请问有什么可以帮您的？</p>
+    <!-- Hero -->
+    <section class="hero" id="hero">
+        <div class="hero-content">
+            <div class="hero-badge">
+                <span class="dot"></span>
+                2024 火热招生中
             </div>
-
-            <div class="quick-replies" id="quickReplies">
-                <button class="quick-reply-btn" onclick="sendQuickReply('我想了解课程信息')">📚 了解课程</button>
-                <button class="quick-reply-btn" onclick="sendQuickReply('有什么适合零基础的课程？')">🎓 零基础课程</button>
-                <button class="quick-reply-btn" onclick="sendQuickReply('我想预约试听')">📅 预约试听</button>
-                <button class="quick-reply-btn" onclick="sendQuickReply('你们有哪些校区？')">🏫 校区信息</button>
+            <h1>学技术，来<span class="highlight">黑牛</span><br>让代码改变你的未来</h1>
+            <p>专注 IT 职业教育，Java / Python / 前端 / AI 全栈培养<br>零基础入学，保障就业，万名学员的共同选择</p>
+            <div class="hero-buttons">
+                <button class="btn-primary" onclick="openChat()">预约免费试听</button>
+                <a href="#courses" class="btn-outline">查看课程 ↓</a>
             </div>
+        </div>
+        <div class="scroll-hint">
+            <span>↓</span>
+            <span>向下滚动</span>
+        </div>
+    </section>
 
-            <div class="typing-indicator" id="typingIndicator">
-                <div class="msg-avatar" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">🤖</div>
-                <div class="dots">
-                    <span></span>
-                    <span></span>
-                    <span></span>
+    <!-- 课程体系 -->
+    <section id="courses">
+        <div class="section-header">
+            <div class="section-tag">COURSES</div>
+            <h2>热门课程</h2>
+            <p>紧跟企业需求，实战项目驱动，毕业即可上手工作</p>
+        </div>
+        <div class="courses-grid">
+            <div class="course-card" style="--card-color: #f56c6c;">
+                <div class="course-icon">☕</div>
+                <h3>Java 全栈开发</h3>
+                <p>Spring Boot 3 + 微服务 + 分布式架构，从入门到精通，覆盖企业级开发全链路</p>
+                <div class="course-meta">
+                    <div class="course-price">¥12800 <span>/期</span></div>
+                    <span class="course-tag">热 门</span>
+                </div>
+            </div>
+            <div class="course-card" style="--card-color: #00d4ff;">
+                <div class="course-icon">🐍</div>
+                <h3>Python + AI 开发</h3>
+                <p>Python 基础 + 爬虫 + 数据分析 + 大模型应用开发，抢占 AI 时代先机</p>
+                <div class="course-meta">
+                    <div class="course-price">¥13800 <span>/期</span></div>
+                    <span class="course-tag">新 课</span>
+                </div>
+            </div>
+            <div class="course-card" style="--card-color: #67c23a;">
+                <div class="course-icon">🌐</div>
+                <h3>前端全栈开发</h3>
+                <p>Vue 3 + React + Node.js + TypeScript，打造现代化 Web 应用</p>
+                <div class="course-meta">
+                    <div class="course-price">¥11800 <span>/期</span></div>
+                    <span class="course-tag">推 荐</span>
+                </div>
+            </div>
+            <div class="course-card" style="--card-color: #e6a23c;">
+                <div class="course-icon">🎨</div>
+                <h3>UI/UX 设计</h3>
+                <p>Figma + Sketch + 设计思维 + 交互设计，培养全链路设计师</p>
+                <div class="course-meta">
+                    <div class="course-price">¥9800 <span>/期</span></div>
+                    <span class="course-tag">零基础</span>
                 </div>
             </div>
         </div>
+    </section>
 
-        <div class="chat-input">
-            <div class="input-wrapper">
-                <textarea 
-                    id="messageInput" 
-                    placeholder="输入您的问题..." 
-                    rows="1"
-                    onkeydown="handleKeyDown(event)"
-                    oninput="autoResize(this)"
-                ></textarea>
-                <button class="send-btn" id="sendBtn" onclick="sendMessage()">
-                    ➤
-                </button>
+    <!-- 优势 -->
+    <section class="advantages" id="advantages">
+        <div class="section-header">
+            <div class="section-tag">WHY US</div>
+            <h2>为什么选择黑牛</h2>
+            <p>不只是学技术，更是改变职业命运</p>
+        </div>
+        <div class="adv-grid">
+            <div class="adv-item">
+                <div class="adv-num">96%</div>
+                <h3>就业率</h3>
+                <p>毕业学员 3 个月内就业率达 96%，平均薪资 12K+</p>
             </div>
+            <div class="adv-item">
+                <div class="adv-num">50+</div>
+                <h3>企业合作</h3>
+                <p>与 50+ 知名企业建立人才输送合作，直通面试机会</p>
+            </div>
+            <div class="adv-item">
+                <div class="adv-num">10000+</div>
+                <h3>毕业学员</h3>
+                <p>累计培养万名 IT 人才，遍布一线互联网公司</p>
+            </div>
+            <div class="adv-item">
+                <div class="adv-num">真项目</div>
+                <h3>实战驱动</h3>
+                <p>60% 课时用于实战项目，企业真实案例，积累一线经验</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- 校区 -->
+    <section id="campuses">
+        <div class="section-header">
+            <div class="section-tag">CAMPUSES</div>
+            <h2>校区分布</h2>
+            <p>覆盖核心城市，就近入学更方便</p>
+        </div>
+        <div class="campuses-grid">
+            <div class="campus-card">
+                <h3>📍 中关村校区</h3>
+                <div class="addr">北京市海淀区中关村大街 28 号</div>
+                <div class="hours">🕐 09:00 - 21:00</div>
+            </div>
+            <div class="campus-card">
+                <h3>📍 国贸校区</h3>
+                <div class="addr">北京市朝阳区建国路 88 号 SOHO 现代城</div>
+                <div class="hours">🕐 09:00 - 21:00</div>
+            </div>
+            <div class="campus-card">
+                <h3>📍 西直门校区</h3>
+                <div class="addr">北京市西城区西直门外大街 1 号西环广场</div>
+                <div class="hours">🕐 09:00 - 21:00</div>
+            </div>
+        </div>
+    </section>
+
+    <!-- CTA -->
+    <section class="cta-section">
+        <h2>还在犹豫？</h2>
+        <p>预约一次免费试听，亲身感受黑牛的课堂魅力</p>
+        <button class="btn-primary" onclick="openChat()">立即预约 →</button>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="footer-content">
+            <div class="footer-brand">
+                <div class="logo"><span style="color:#00d4ff;">黑牛</span>程序员</div>
+                <p>专注 IT 职业教育，用技术改变命运。零基础入学，保障就业。</p>
+            </div>
+            <div class="footer-links">
+                <h4>课程体系</h4>
+                <a href="#courses">Java 全栈开发</a>
+                <a href="#courses">Python + AI 开发</a>
+                <a href="#courses">前端全栈开发</a>
+                <a href="#courses">UI/UX 设计</a>
+            </div>
+            <div class="footer-links">
+                <h4>关于我们</h4>
+                <a href="#advantages">品牌故事</a>
+                <a href="#campuses">校区分布</a>
+                <a href="#">师资力量</a>
+                <a href="#">学员作品</a>
+            </div>
+            <div class="footer-links">
+                <h4>联系方式</h4>
+                <a href="#">📞 400-888-6666</a>
+                <a href="#">📧 hi@heiniu.com</a>
+                <a href="#">💬 在线咨询</a>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            © 2024 黑牛程序员 All Rights Reserved | 京ICP备 XXXXXXXX号
+        </div>
+    </footer>
+
+    <!-- 浮动客服按钮 -->
+    <button class="chat-fab" id="chatFab" onclick="openChat()">
+        <span class="pulse-ring"></span>
+        💬
+    </button>
+    <div class="chat-fab-tooltip" id="fabTooltip">👋 有课程问题？点我咨询</div>
+
+    <!-- 客服弹窗 -->
+    <div class="chat-popup-overlay" id="chatOverlay" onclick="closeChat()"></div>
+    <div class="chat-popup" id="chatPopup">
+        <div class="chat-popup-header">
+            <div class="avatar">🐮</div>
+            <div class="info">
+                <h3>黑牛课程顾问</h3>
+                <p>在线 · 平均响应 10 秒</p>
+            </div>
+            <button class="close-btn" onclick="closeChat()">✕</button>
+        </div>
+        <div class="chat-popup-body">
+            <iframe src="./chat.html" id="chatIframe"></iframe>
         </div>
     </div>
 
     <script>
-        /**
-         * 智能客服前端脚本
-         * 
-         * 功能说明：
-         * - 管理用户会话（sessionId）
-         * - 发送消息到后端API
-         * - 显示AI回复
-         * - 支持快捷回复按钮
-         * - 支持表格渲染（课程信息）
-         */
+        // 导航栏滚动效果
+        window.addEventListener('scroll', () => {
+            document.getElementById('navbar').classList.toggle('scrolled', window.scrollY > 50);
+        });
 
-        // 当前会话ID，用于保持对话上下文
-        let sessionId = generateSessionId();
-        // 加载状态标记，防止重复发送
-        let isLoading = false;
-        // 当前对话模式：instruction-指令解析，function-Function Calling
-        let currentMode = 'instruction';
+        // 3秒后隐藏 tooltip
+        setTimeout(() => {
+            const tip = document.getElementById('fabTooltip');
+            if (tip) tip.style.display = 'none';
+        }, 5000);
 
-        /**
-         * 切换对话模式
-         * @param mode instruction-指令解析模式，function-Function Calling模式
-         */
-        function switchMode(mode) {
-            currentMode = mode;
-
-            // 更新按钮样式
-            document.getElementById('modeInstruction').classList.toggle('active', mode === 'instruction');
-            document.getElementById('modeFunction').classList.toggle('active', mode === 'function');
-
-            // 生成新的会话ID，避免上下文混淆
-            sessionId = generateSessionId();
-
-            // 显示模式切换提示
-            const modeName = mode === 'instruction' ? '指令解析模式' : 'Function Calling模式';
-            addSystemMessage(`已切换到【${modeName}】，会话已重置`);
+        // 客服弹窗
+        function openChat() {
+            document.getElementById('chatOverlay').classList.add('open');
+            document.getElementById('chatPopup').classList.add('open');
+            document.getElementById('chatFab').style.display = 'none';
+            document.getElementById('fabTooltip').style.display = 'none';
         }
-
-        /**
-         * 添加系统消息
-         * @param content 消息内容
-         */
-        function addSystemMessage(content) {
-            const messagesDiv = document.getElementById('chatMessages');
-            const quickReplies = document.getElementById('quickReplies');
-
-            if (quickReplies) {
-                quickReplies.style.display = 'none';
-            }
-
-            const msgDiv = document.createElement('div');
-            msgDiv.className = 'mode-label';
-            msgDiv.textContent = content;
-
-            const typingIndicator = document.getElementById('typingIndicator');
-            messagesDiv.insertBefore(msgDiv, typingIndicator);
-            scrollToBottom();
-        }
-
-        /**
-         * 生成随机会话ID
-         * @returns 格式为 session_xxxxxxxx 的字符串
-         */
-        function generateSessionId() {
-            return 'session_' + Math.random().toString(36).substr(2, 9);
-        }
-
-        /**
-         * 获取当前时间字符串（HH:mm格式）
-         * @returns 格式化的时间字符串
-         */
-        function getCurrentTime() {
-            const now = new Date();
-            return now.getHours().toString().padStart(2, '0') + ':' +
-                   now.getMinutes().toString().padStart(2, '0');
-        }
-
-        /**
-         * 自动调整文本框高度
-         * @param textarea 文本框元素
-         */
-        function autoResize(textarea) {
-            textarea.style.height = 'auto';
-            textarea.style.height = Math.min(textarea.scrollHeight, 120) + 'px';
-        }
-
-        /**
-         * 处理键盘事件（Enter发送，Shift+Enter换行）
-         */
-        function handleKeyDown(event) {
-            if (event.key === 'Enter' && !event.shiftKey) {
-                event.preventDefault();
-                sendMessage();
-            }
-        }
-
-        /**
-         * 发送快捷回复
-         * @param text 快捷回复内容
-         */
-        function sendQuickReply(text) {
-            document.getElementById('messageInput').value = text;
-            sendMessage();
-        }
-
-        /**
-         * HTML转义，防止XSS攻击
-         * @param text 原始文本
-         * @returns 转义后的文本
-         */
-        function escapeHtml(text) {
-            const div = document.createElement('div');
-            div.textContent = text;
-            return div.innerHTML;
-        }
-
-        /**
-         * 格式化消息内容
-         * - 检测是否包含表格数据（课程信息）
-         * - 处理换行符
-         * @param text 原始文本
-         * @returns 格式化后的HTML
-         */
-        function formatMessage(text) {
-            // 检测是否包含表格数据（课程信息）
-            if (text.includes('课程名称') && text.includes('课程类型')) {
-                return formatAsTable(text);
-            }
-
-            // 处理换行
-            return escapeHtml(text).replace(/\n/g, '<br>');
-        }
-
-        /**
-         * 将文本格式转换为HTML表格
-         * @param text 包含表格数据的文本
-         * @returns HTML表格字符串
-         */
-        function formatAsTable(text) {
-            // 尝试将文本转换为表格
-            const lines = text.split('\n').filter(line => line.trim());
-            let tableHtml = '<table><thead><tr>';
-
-            // 查找表头
-            let headerFound = false;
-            let rows = [];
-
-            for (let line of lines) {
-                line = line.trim();
-                if (line.includes('课程名称') && line.includes('课程类型')) {
-                    // 解析表头
-                    const headers = parseTableRow(line);
-                    headers.forEach(h => tableHtml += `<th>${escapeHtml(h)}</th>`);
-                    tableHtml += '</tr></thead><tbody>';
-                    headerFound = true;
-                } else if (headerFound && line.match(/^\d/)) {
-                    // 解析数据行
-                    rows.push(parseTableRow(line));
-                }
-            }
-
-            // 添加数据行
-            rows.forEach(row => {
-                tableHtml += '<tr>';
-                row.forEach(cell => tableHtml += `<td>${escapeHtml(cell)}</td>`);
-                tableHtml += '</tr>';
-            });
-
-            tableHtml += '</tbody></table>';
-
-            // 提取表格前后的文本
-            const beforeTable = text.split('课程名称')[0].trim();
-            const afterTable = text.split('星期天').pop()?.split('\n').filter(l => l.trim() && !l.includes('|')).join('\n').trim() || '';
-
-            let result = '';
-            if (beforeTable) result += escapeHtml(beforeTable) + '<br>';
-            if (rows.length > 0) result += tableHtml;
-            if (afterTable) result += '<br>' + escapeHtml(afterTable);
-
-            return result || escapeHtml(text);
-        }
-
-        /**
-         * 解析表格行数据
-         * @param line 行文本
-         * @returns 单元格数组
-         */
-        function parseTableRow(line) {
-            // 支持多种分隔符
-            if (line.includes('|')) {
-                return line.split('|').map(c => c.trim()).filter(c => c);
-            }
-            // 空格分隔（简单解析）
-            return line.split(/\s{2,}/).map(c => c.trim()).filter(c => c);
-        }
-
-        /**
-         * 添加消息到聊天窗口
-         * @param content 消息内容
-         * @param isUser 是否为用户消息
-         */
-        function addMessage(content, isUser = false) {
-            const messagesDiv = document.getElementById('chatMessages');
-            const quickReplies = document.getElementById('quickReplies');
-
-            // 隐藏快捷回复（首次发送消息后）
-            if (quickReplies) {
-                quickReplies.style.display = 'none';
-            }
-
-            const messageDiv = document.createElement('div');
-            messageDiv.className = `message ${isUser ? 'user' : 'bot'}`;
-
-            const avatar = isUser ? '👤' : '🤖';
-            const formattedContent = isUser ? escapeHtml(content) : formatMessage(content);
-
-            messageDiv.innerHTML = `
-                <div class="msg-avatar">${avatar}</div>
-                <div class="msg-content">
-                    <div class="msg-bubble">${formattedContent}</div>
-                    <div class="msg-time">${getCurrentTime()}</div>
-                </div>
-            `;
-
-            // 插入到typing indicator之前
-            const typingIndicator = document.getElementById('typingIndicator');
-            messagesDiv.insertBefore(messageDiv, typingIndicator);
-
-            scrollToBottom();
-        }
-
-        /**
-         * 滚动到聊天窗口底部
-         */
-        function scrollToBottom() {
-            const messagesDiv = document.getElementById('chatMessages');
-            messagesDiv.scrollTop = messagesDiv.scrollHeight;
-        }
-
-        /**
-         * 显示"正在输入"动画
-         */
-        function showTyping() {
-            document.getElementById('typingIndicator').classList.add('active');
-            scrollToBottom();
-        }
-
-        /**
-         * 隐藏"正在输入"动画
-         */
-        function hideTyping() {
-            document.getElementById('typingIndicator').classList.remove('active');
-        }
-
-        /**
-         * 发送消息到后端
-         * 
-         * 流程：
-         * 1. 获取用户输入的消息
-         * 2. 显示用户消息到聊天窗口
-         * 3. 显示"正在输入"动画
-         * 4. 调用后端API
-         * 5. 显示AI回复
-         */
-        async function sendMessage() {
-            const input = document.getElementById('messageInput');
-            const message = input.value.trim();
-
-            // 空消息或正在加载时不处理
-            if (!message || isLoading) return;
-
-            isLoading = true;
-            document.getElementById('sendBtn').disabled = true;
-
-            // 显示用户消息
-            addMessage(message, true);
-            input.value = '';
-            input.style.height = 'auto';
-
-            // 显示输入中动画
-            showTyping();
-
-            try {
-                // 调用后端API
-                const response = await fetch('/api/chat/send', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        message: message,
-                        sessionId: sessionId,
-                        mode: currentMode
-                    })
-                });
-
-                const data = await response.json();
-
-                hideTyping();
-
-                // 显示AI回复
-                addMessage(data.reply, false);
-
-                // 更新sessionId（首次对话时后端会返回）
-                if (data.sessionId) {
-                    sessionId = data.sessionId;
-                }
-            } catch (error) {
-                hideTyping();
-                addMessage('抱歉，网络出现问题，请稍后重试。', false);
-                console.error('Error:', error);
-            } finally {
-                isLoading = false;
-                document.getElementById('sendBtn').disabled = false;
-            }
+        function closeChat() {
+            document.getElementById('chatOverlay').classList.remove('open');
+            document.getElementById('chatPopup').classList.remove('open');
+            document.getElementById('chatFab').style.display = 'flex';
         }
     </script>
 </body>

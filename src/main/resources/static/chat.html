@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>黑牛课程顾问</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'PingFang SC', 'Microsoft YaHei', -apple-system, sans-serif;
+            background: #f8fafc; height: 100vh; display: flex; flex-direction: column;
+        }
+
+        .chat-messages {
+            flex: 1; overflow-y: auto; padding: 16px;
+        }
+
+        .message {
+            display: flex; gap: 10px; margin-bottom: 16px;
+            animation: fadeIn 0.3s ease;
+        }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+        .message.user { flex-direction: row-reverse; }
+        .message .msg-avatar {
+            width: 34px; height: 34px; border-radius: 10px; flex-shrink: 0;
+            display: flex; align-items: center; justify-content: center; font-size: 16px;
+        }
+        .message.bot .msg-avatar { background: linear-gradient(135deg, #00d4ff, #7b2ff7); color: #fff; }
+        .message.user .msg-avatar { background: #e2e8f0; }
+        .message .msg-content { max-width: 78%; }
+        .message .msg-bubble {
+            padding: 12px 16px; border-radius: 16px; line-height: 1.6;
+            font-size: 14px; word-wrap: break-word;
+        }
+        .message.bot .msg-bubble {
+            background: #fff; color: #334155; border-bottom-left-radius: 4px;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+        }
+        .message.user .msg-bubble {
+            background: linear-gradient(135deg, #00d4ff, #7b2ff7); color: #fff; border-bottom-right-radius: 4px;
+        }
+        .message .msg-time { font-size: 11px; color: #94a3b8; margin-top: 4px; padding: 0 4px; }
+        .message.user .msg-time { text-align: right; }
+
+        /* 表格 */
+        .message table {
+            width: 100%; border-collapse: collapse; margin: 8px 0; font-size: 13px;
+            background: #fff; border-radius: 8px; overflow: hidden; box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+        }
+        .message table th { background: linear-gradient(135deg, #00d4ff, #7b2ff7); color: #fff; padding: 8px 10px; text-align: left; font-weight: 500; }
+        .message table td { padding: 8px 10px; border-bottom: 1px solid #f0f0f0; color: #475569; }
+        .message table tr:last-child td { border-bottom: none; }
+        .message table tr:hover td { background: #f8fafc; }
+
+        /* 输入区 */
+        .chat-input {
+            padding: 14px 16px; background: #fff; border-top: 1px solid #eee; flex-shrink: 0;
+        }
+        .input-wrapper { display: flex; gap: 10px; align-items: flex-end; }
+        .chat-input textarea {
+            flex: 1; padding: 12px 16px; border: 1.5px solid #e2e8f0; border-radius: 20px;
+            font-size: 14px; resize: none; min-height: 44px; max-height: 100px;
+            font-family: inherit; outline: none; transition: border-color 0.2s;
+        }
+        .chat-input textarea:focus { border-color: #00d4ff; }
+        .send-btn {
+            width: 44px; height: 44px; border: none; border-radius: 50%;
+            background: linear-gradient(135deg, #00d4ff, #7b2ff7); color: #fff;
+            font-size: 18px; cursor: pointer; flex-shrink: 0;
+            display: flex; align-items: center; justify-content: center;
+            transition: transform 0.2s;
+        }
+        .send-btn:hover { transform: scale(1.05); }
+        .send-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        /* 快捷回复 */
+        .quick-replies { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; padding: 0 4px; }
+        .quick-reply-btn {
+            padding: 7px 14px; background: #fff; border: 1px solid #e2e8f0; border-radius: 18px;
+            font-size: 13px; color: #64748b; cursor: pointer; transition: all 0.2s;
+        }
+        .quick-reply-btn:hover { background: linear-gradient(135deg, #00d4ff, #7b2ff7); color: #fff; border-color: transparent; }
+
+        /* 欢迎消息 */
+        .welcome-msg { text-align: center; padding: 30px 16px; color: #64748b; }
+        .welcome-msg .emoji { font-size: 40px; margin-bottom: 12px; }
+        .welcome-msg h4 { font-size: 16px; color: #334155; margin-bottom: 8px; }
+        .welcome-msg p { font-size: 13px; line-height: 1.6; }
+
+        /* 输入中动画 */
+        .typing-indicator { display: none; gap: 10px; margin-bottom: 16px; }
+        .typing-indicator.active { display: flex; }
+        .typing-indicator .dots {
+            background: #fff; padding: 12px 16px; border-radius: 16px; border-bottom-left-radius: 4px;
+            display: flex; gap: 4px; box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+        }
+        .typing-indicator .dots span {
+            width: 7px; height: 7px; background: #94a3b8; border-radius: 50%;
+            animation: bounce 1.4s infinite ease-in-out;
+        }
+        .typing-indicator .dots span:nth-child(1) { animation-delay: -0.32s; }
+        .typing-indicator .dots span:nth-child(2) { animation-delay: -0.16s; }
+        @keyframes bounce { 0%,80%,100% { transform: scale(0); } 40% { transform: scale(1); } }
+
+        /* 模式切换 */
+        .mode-bar {
+            display: flex; gap: 6px; padding: 8px 16px; background: #fff;
+            border-bottom: 1px solid #eee; flex-shrink: 0;
+        }
+        .mode-btn {
+            padding: 5px 12px; border: 1px solid #e2e8f0; border-radius: 6px;
+            font-size: 12px; cursor: pointer; background: #fff; color: #64748b; transition: all 0.2s;
+        }
+        .mode-btn.active { background: linear-gradient(135deg, #00d4ff, #7b2ff7); color: #fff; border-color: transparent; }
+    </style>
+</head>
+<body>
+    <!-- 模式切换 -->
+    <div class="mode-bar">
+        <button class="mode-btn active" id="modeInstruction" onclick="switchMode('instruction')">指令解析</button>
+        <button class="mode-btn" id="modeFunction" onclick="switchMode('function')">Function Calling</button>
+    </div>
+
+    <!-- 消息区 -->
+    <div class="chat-messages" id="chatMessages">
+        <div class="welcome-msg">
+            <div class="emoji">🐮</div>
+            <h4>Hi，我是黑牛课程顾问</h4>
+            <p>可以帮您了解课程、推荐班型、预约试听<br>有什么可以帮您的？</p>
+        </div>
+        <div class="quick-replies" id="quickReplies">
+            <button class="quick-reply-btn" onclick="sendQuickReply('我想了解课程信息')">📚 了解课程</button>
+            <button class="quick-reply-btn" onclick="sendQuickReply('有什么适合零基础的课程？')">🎓 零基础课程</button>
+            <button class="quick-reply-btn" onclick="sendQuickReply('我想预约试听')">📅 预约试听</button>
+            <button class="quick-reply-btn" onclick="sendQuickReply('你们有哪些校区？')">🏫 校区信息</button>
+        </div>
+        <div class="typing-indicator" id="typingIndicator">
+            <div class="msg-avatar" style="background:linear-gradient(135deg,#00d4ff,#7b2ff7);color:#fff;">🐮</div>
+            <div class="dots"><span></span><span></span><span></span></div>
+        </div>
+    </div>
+
+    <!-- 输入区 -->
+    <div class="chat-input">
+        <div class="input-wrapper">
+            <textarea id="messageInput" placeholder="输入您的问题..." rows="1"
+                onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendMessage()}"
+                oninput="this.style.height='auto';this.style.height=Math.min(this.scrollHeight,100)+'px'"
+            ></textarea>
+            <button class="send-btn" id="sendBtn" onclick="sendMessage()">➤</button>
+        </div>
+    </div>
+
+    <script>
+        let sessionId = 'session_' + Math.random().toString(36).substr(2, 9);
+        let isLoading = false;
+        let currentMode = 'instruction';
+
+        function switchMode(mode) {
+            currentMode = mode;
+            document.getElementById('modeInstruction').classList.toggle('active', mode === 'instruction');
+            document.getElementById('modeFunction').classList.toggle('active', mode === 'function');
+            sessionId = 'session_' + Math.random().toString(36).substr(2, 9);
+            addSystemMessage('已切换到' + (mode === 'instruction' ? '指令解析' : 'Function Calling') + '模式');
+        }
+
+        function addSystemMessage(content) {
+            const d = document.getElementById('chatMessages');
+            const el = document.createElement('div');
+            el.style.cssText = 'text-align:center;font-size:12px;color:#94a3b8;padding:8px;';
+            el.textContent = content;
+            d.insertBefore(el, document.getElementById('typingIndicator'));
+            scroll();
+        }
+
+        function getCurrentTime() {
+            const n = new Date();
+            return n.getHours().toString().padStart(2,'0') + ':' + n.getMinutes().toString().padStart(2,'0');
+        }
+
+        function escapeHtml(t) { const d = document.createElement('div'); d.textContent = t; return d.innerHTML; }
+
+        function formatMessage(text) {
+            if (text.includes('课程名称') && text.includes('课程类型')) return formatAsTable(text);
+            return escapeHtml(text).replace(/\n/g, '<br>');
+        }
+
+        function formatAsTable(text) {
+            const lines = text.split('\n').filter(l => l.trim());
+            let html = '<table><thead><tr>', headerFound = false, rows = [];
+            for (let line of lines) {
+                line = line.trim();
+                if (line.includes('课程名称') && line.includes('课程类型')) {
+                    line.split(/\s{2,}|\|/).map(c=>c.trim()).filter(c=>c).forEach(h => html += `<th>${escapeHtml(h)}</th>`);
+                    html += '</tr></thead><tbody>'; headerFound = true;
+                } else if (headerFound && line.match(/^\d/)) {
+                    rows.push(line.split(/\s{2,}|\|/).map(c=>c.trim()).filter(c=>c));
+                }
+            }
+            rows.forEach(r => { html += '<tr>'; r.forEach(c => html += `<td>${escapeHtml(c)}</td>`); html += '</tr>'; });
+            html += '</tbody></table>';
+            const before = text.split('课程名称')[0].trim();
+            return (before ? escapeHtml(before) + '<br>' : '') + html;
+        }
+
+        function addMessage(content, isUser = false) {
+            const d = document.getElementById('chatMessages');
+            document.getElementById('quickReplies').style.display = 'none';
+            const el = document.createElement('div');
+            el.className = `message ${isUser ? 'user' : 'bot'}`;
+            el.innerHTML = `
+                <div class="msg-avatar">${isUser ? '👤' : '🐮'}</div>
+                <div class="msg-content">
+                    <div class="msg-bubble">${isUser ? escapeHtml(content) : formatMessage(content)}</div>
+                    <div class="msg-time">${getCurrentTime()}</div>
+                </div>`;
+            d.insertBefore(el, document.getElementById('typingIndicator'));
+            scroll();
+        }
+
+        function scroll() { const d = document.getElementById('chatMessages'); d.scrollTop = d.scrollHeight; }
+
+        function sendQuickReply(t) { document.getElementById('messageInput').value = t; sendMessage(); }
+
+        async function sendMessage() {
+            const input = document.getElementById('messageInput');
+            const message = input.value.trim();
+            if (!message || isLoading) return;
+            isLoading = true; document.getElementById('sendBtn').disabled = true;
+            addMessage(message, true); input.value = ''; input.style.height = 'auto';
+            document.getElementById('typingIndicator').classList.add('active'); scroll();
+            try {
+                const res = await fetch('/api/chat/send', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ message, sessionId, mode: currentMode })
+                });
+                const data = await res.json();
+                document.getElementById('typingIndicator').classList.remove('active');
+                addMessage(data.reply, false);
+                if (data.sessionId) sessionId = data.sessionId;
+            } catch (e) {
+                document.getElementById('typingIndicator').classList.remove('active');
+                addMessage('网络异常，请稍后重试', false);
+            } finally {
+                isLoading = false; document.getElementById('sendBtn').disabled = false;
+            }
+        }
+    </script>
+</body>
+</html>

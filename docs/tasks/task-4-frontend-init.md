@@ -14,17 +14,20 @@
 
 ### 4.1 初始化项目
 
-在项目根目录下执行：
+在 `src/main/resources/` 目录下执行：
 ```bash
+cd src/main/resources
 npm create vite@latest admin-frontend -- --template vue
 cd admin-frontend
 npm install
 npm install element-plus @element-plus/icons-vue vue-router axios echarts
 ```
 
+前端项目完整路径：`src/main/resources/admin-frontend/`
+
 ### 4.2 配置 Vite
 
-修改 `admin-frontend/vite.config.js`：
+修改 `src/main/resources/admin-frontend/vite.config.js`：
 
 ```javascript
 import { defineConfig } from 'vite'
@@ -46,7 +49,7 @@ export default defineConfig({
 
 ### 4.3 入口文件
 
-**admin-frontend/index.html**：
+**src/main/resources/admin-frontend/index.html**：
 ```html
 <!DOCTYPE html>
 <html lang="zh-CN">
@@ -62,7 +65,7 @@ export default defineConfig({
 </html>
 ```
 
-**admin-frontend/src/main.js**：
+**src/main/resources/admin-frontend/src/main.js**：
 ```javascript
 import { createApp } from 'vue'
 import ElementPlus from 'element-plus'
@@ -84,7 +87,7 @@ app.use(router)
 app.mount('#app')
 ```
 
-**admin-frontend/src/App.vue**：
+**src/main/resources/admin-frontend/src/App.vue**：
 ```vue
 <template>
   <router-view />
@@ -93,7 +96,7 @@ app.mount('#app')
 
 ### 4.4 路由配置
 
-**admin-frontend/src/router/index.js**：
+**src/main/resources/admin-frontend/src/router/index.js**：
 
 ```javascript
 import { createRouter, createWebHistory } from 'vue-router'
@@ -194,7 +197,7 @@ export default router
 
 ### 4.5 Axios 封装
 
-**admin-frontend/src/api/request.js**：
+**src/main/resources/admin-frontend/src/api/request.js**：
 
 ```javascript
 import axios from 'axios'
@@ -237,7 +240,7 @@ export default request
 
 ### 4.6 登录 API
 
-**admin-frontend/src/api/auth.js**：
+**src/main/resources/admin-frontend/src/api/auth.js**：
 
 ```javascript
 import request from './request'
@@ -249,7 +252,7 @@ export function login(data) {
 
 ### 4.7 登录页
 
-**admin-frontend/src/views/Login.vue**：
+**src/main/resources/admin-frontend/src/views/Login.vue**：
 
 ```vue
 <template>
@@ -330,7 +333,7 @@ const handleLogin = async () => {
 
 ### 4.8 后台布局
 
-**admin-frontend/src/layout/AdminLayout.vue**：
+**src/main/resources/admin-frontend/src/layout/AdminLayout.vue**：
 
 ```vue
 <template>
@@ -481,7 +484,7 @@ const handleLogout = () => {
 ## 新建文件清单
 
 ```
-admin-frontend/
+src/main/resources/admin-frontend/
 ├── index.html
 ├── package.json
 ├── vite.config.js
@@ -508,7 +511,7 @@ admin-frontend/
 
 ## 验证方式
 
-1. `cd admin-frontend && npm run dev`
+1. `cd src/main/resources/admin-frontend && npm run dev`
 2. 浏览器访问 `http://localhost:5173`
 3. 应自动跳转到登录页
 4. 输入 admin/123456 登录
