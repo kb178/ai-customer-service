@@ -117,8 +117,7 @@
 <body>
     <!-- 模式切换 -->
     <div class="mode-bar">
-        <button class="mode-btn active" id="modeInstruction" onclick="switchMode('instruction')">指令解析</button>
-        <button class="mode-btn" id="modeFunction" onclick="switchMode('function')">Function Calling</button>
+        <button class="mode-btn active" id="modeFunction" onclick="switchMode('function')">Function Calling</button>
     </div>
 
     <!-- 消息区 -->
@@ -154,14 +153,11 @@
     <script>
         let sessionId = 'session_' + Math.random().toString(36).substr(2, 9);
         let isLoading = false;
-        let currentMode = 'instruction';
+        let currentMode = 'function';
 
         function switchMode(mode) {
             currentMode = mode;
-            document.getElementById('modeInstruction').classList.toggle('active', mode === 'instruction');
-            document.getElementById('modeFunction').classList.toggle('active', mode === 'function');
             sessionId = 'session_' + Math.random().toString(36).substr(2, 9);
-            addSystemMessage('已切换到' + (mode === 'instruction' ? '指令解析' : 'Function Calling') + '模式');
         }
 
         function addSystemMessage(content) {
