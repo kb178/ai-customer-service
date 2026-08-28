@@ -23,11 +23,11 @@ spring:
   # Spring AI配置 - DeepSeek
   ai:
     openai:
-      base-url: https://api.deepseek.com
+      base-url: https://api.xiaomimimo.com
       api-key: ${DEEPSEEK_API_KEY}
       chat:
         options:
-          model: deepseek-chat
+          model: mimo-v2.5-pro
           temperature: 0.7
 
 # 会话配置

@@ -105,6 +105,7 @@ public class CourseFunctions {
     public static class SearchCoursesRequest {
         private String keyword;
         private Long categoryId;
+        public void setCategoryId(Object value) { this.categoryId = LongParser.parse(value); }
     }
 
     @Data
@@ -127,6 +128,8 @@ public class CourseFunctions {
     public static class GetCourseSchedulesRequest {
         private Long campusId;
         private Long courseId;
+        public void setCampusId(Object value) { this.campusId = LongParser.parse(value); }
+        public void setCourseId(Object value) { this.courseId = LongParser.parse(value); }
     }
 
     @Data

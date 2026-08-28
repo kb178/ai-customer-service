@@ -28,6 +28,7 @@ public class ChatController {
      */
     @PostMapping("/send")
     public ChatResponse sendMessage(@Valid @RequestBody ChatRequest request) {
+        //生成会话id
         String sessionId = request.getSessionId() != null
                 ? request.getSessionId()
                 : UUID.randomUUID().toString();

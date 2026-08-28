@@ -3,6 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
     <title>黑牛课程顾问</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -35,22 +38,41 @@
         .message.bot .msg-bubble {
             background: #fff; color: #334155; border-bottom-left-radius: 4px;
             box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+            line-height: 1.7;
         }
+        .message.bot .msg-bubble strong { color: #1e293b; font-weight: 600; }
+        .message.bot .msg-bubble h4 {
+            font-size: 14px; color: #1e293b; font-weight: 700;
+            margin: 8px 0 4px 0; padding: 0;
+        }
+        .message.bot .msg-bubble ul {
+            list-style: none; margin: 6px 0; padding: 0;
+        }
+        .message.bot .msg-bubble ul li {
+            padding: 3px 0 3px 16px; position: relative; font-size: 13px;
+        }
+        .message.bot .msg-bubble ul li::before {
+            content: '•'; color: #00d4ff; font-weight: bold;
+            position: absolute; left: 2px;
+        }
+        .message.bot .msg-bubble .course-table {
+            width: 100%; border-collapse: collapse; margin: 8px 0;
+            font-size: 13px; border-radius: 8px; overflow: hidden;
+        }
+        .message.bot .msg-bubble .course-table th {
+            background: linear-gradient(135deg, #00d4ff, #7b2ff7);
+            color: #fff; padding: 8px 10px; text-align: left; font-weight: 500;
+        }
+        .message.bot .msg-bubble .course-table td {
+            padding: 8px 10px; border-bottom: 1px solid #f0f0f0; color: #475569;
+        }
+        .message.bot .msg-bubble .course-table tr:last-child td { border-bottom: none; }
+        .message.bot .msg-bubble .course-table tr:hover td { background: #f8fafc; }
         .message.user .msg-bubble {
             background: linear-gradient(135deg, #00d4ff, #7b2ff7); color: #fff; border-bottom-right-radius: 4px;
         }
         .message .msg-time { font-size: 11px; color: #94a3b8; margin-top: 4px; padding: 0 4px; }
         .message.user .msg-time { text-align: right; }
-
-        /* 表格 */
-        .message table {
-            width: 100%; border-collapse: collapse; margin: 8px 0; font-size: 13px;
-            background: #fff; border-radius: 8px; overflow: hidden; box-shadow: 0 1px 4px rgba(0,0,0,0.06);
-        }
-        .message table th { background: linear-gradient(135deg, #00d4ff, #7b2ff7); color: #fff; padding: 8px 10px; text-align: left; font-weight: 500; }
-        .message table td { padding: 8px 10px; border-bottom: 1px solid #f0f0f0; color: #475569; }
-        .message table tr:last-child td { border-bottom: none; }
-        .message table tr:hover td { background: #f8fafc; }
 
         /* 输入区 */
         .chat-input {
@@ -151,13 +173,17 @@
     </div>
 
     <script>
-        let sessionId = 'session_' + Math.random().toString(36).substr(2, 9);
+        // 从 localStorage 获取 sessionId，没有则生成新的（刷新页面不会丢失会话）
+        let sessionId = localStorage.getItem('chat_sessionId') || ('session_' + Math.random().toString(36).substr(2, 9));
+        localStorage.setItem('chat_sessionId', sessionId);
         let isLoading = false;
         let currentMode = 'function';
 
         function switchMode(mode) {
             currentMode = mode;
+            // 切换模式时生成新会话
             sessionId = 'session_' + Math.random().toString(36).substr(2, 9);
+            localStorage.setItem('chat_sessionId', sessionId);
         }
 
         function addSystemMessage(content) {
@@ -174,29 +200,174 @@
             return n.getHours().toString().padStart(2,'0') + ':' + n.getMinutes().toString().padStart(2,'0');
         }
 
-        function escapeHtml(t) { const d = document.createElement('div'); d.textContent = t; return d.innerHTML; }
-
-        function formatMessage(text) {
-            if (text.includes('课程名称') && text.includes('课程类型')) return formatAsTable(text);
-            return escapeHtml(text).replace(/\n/g, '<br>');
+        function escapeHtml(t) {
+            return t.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
         }
 
-        function formatAsTable(text) {
-            const lines = text.split('\n').filter(l => l.trim());
-            let html = '<table><thead><tr>', headerFound = false, rows = [];
+        /**
+         * 核心：安全地将markdown文本转为HTML
+         * 策略：先提取markdown标记，再escape纯文本，最后拼接HTML标签
+         */
+        function renderMarkdown(text) {
+            // 收集所有需要保护的HTML片段
+            let placeholders = [];
+            let counter = 0;
+            function protect(html) {
+                let key = '\x00PH' + (counter++) + '\x00';
+                placeholders.push([key, html]);
+                return key;
+            }
+
+            // 1. **加粗**
+            text = text.replace(/\*\*(.+?)\*\*/g, function(m, p1) { return protect('<strong>' + p1 + '</strong>'); });
+
+            // 2. ## 标题
+            text = text.replace(/^## (.+)$/gm, function(m, p1) { return protect('<h4>' + p1 + '</h4>'); });
+            text = text.replace(/^### (.+)$/gm, function(m, p1) { return protect('<h4>' + p1 + '</h4>'); });
+
+            // 3. 列表项
+            text = text.replace(/^[\-\*] (.+)$/gm, function(m, p1) { return protect('<li>' + p1 + '</li>'); });
+
+            // 4. 现在escape所有纯文本（占位符是\x00开头的特殊字符串，不会被escape影响）
+            text = escapeHtml(text);
+
+            // 5. 还原占位符为HTML标签
+            for (let i = 0; i < placeholders.length; i++) {
+                text = text.replace(placeholders[i][0], placeholders[i][1]);
+            }
+
+            // 6. 连续<li>包裹进<ul>
+            text = text.replace(/((?:<li>.*<\/li>\s*)+)/g, '<ul>$1</ul>');
+
+            // 7. 换行
+            text = text.replace(/\n/g, '<br>');
+            text = text.replace(/<br>\s*<(h4|ul|li)/g, '<$1');
+            text = text.replace(/<\/(h4|ul|li)>\s*<br>/g, '</$1>');
+
+            return text;
+        }
+
+        /**
+         * 检测是否包含课程价格数据
+         */
+        function hasCourseData(text) {
+            const matches = text.match(/¥[\d,]+|[\d,]+元|[\d]{4,}\/\d+课时/g);
+            return matches && matches.length >= 2;
+        }
+
+        /**
+         * 解析课程行
+         */
+        function parseCourseLine(line) {
+            // 去掉开头的emoji和序号
+            let clean = line.replace(/^[📚💻📊🎨🐍🎓🔢📌\-\*\d\.\、\s]+/, '').trim();
+
+            // 尝试各种格式
+            let m;
+            // "课程名 — 描述 ¥价格 / 课时"
+            m = clean.match(/(.+?)\s*[—\-–]\s*(.*?)\s*¥([\d,]+)\s*\/?\s*(\d+)?/);
+            if (m) return { name: m[1].trim(), desc: m[2].trim(), price: m[3], hours: m[4]||'' };
+
+            // "课程名 — 描述 价格元 / 课时"
+            m = clean.match(/(.+?)\s*[—\-–]\s*(.*?)\s*([\d,]+)元\s*\/?\s*(\d+)?/);
+            if (m) return { name: m[1].trim(), desc: m[2].trim(), price: m[3], hours: m[4]||'' };
+
+            // "课程名 ¥价格"
+            m = clean.match(/(.+?)\s+¥([\d,]+)/);
+            if (m) return { name: m[1].trim(), desc: '', price: m[2], hours: '' };
+
+            // "课程名 价格元"
+            m = clean.match(/(.+?)\s+([\d,]+)元/);
+            if (m) return { name: m[1].trim(), desc: '', price: m[2], hours: '' };
+
+            return null;
+        }
+
+        /**
+         * 主格式化函数
+         */
+        function formatMessage(text) {
+            // 检测课程数据
+            if (hasCourseData(text)) {
+                return renderCourseTable(text);
+            }
+            return renderMarkdown(text);
+        }
+
+        /**
+         * 将课程信息渲染为表格
+         */
+        function renderCourseTable(text) {
+            const lines = text.split('\n');
+            let beforeLines = [], courseLines = [], afterLines = [];
+            let section = 'before';
+
             for (let line of lines) {
-                line = line.trim();
-                if (line.includes('课程名称') && line.includes('课程类型')) {
-                    line.split(/\s{2,}|\|/).map(c=>c.trim()).filter(c=>c).forEach(h => html += `<th>${escapeHtml(h)}</th>`);
-                    html += '</tr></thead><tbody>'; headerFound = true;
-                } else if (headerFound && line.match(/^\d/)) {
-                    rows.push(line.split(/\s{2,}|\|/).map(c=>c.trim()).filter(c=>c));
+                let t = line.trim();
+                if (!t) { if (section === 'course') section = 'after'; continue; }
+
+                if (t.match(/¥[\d,]+|[\d,]+元|[\d]{4,}\/\d+课时/)) {
+                    section = 'course';
+                    courseLines.push(t);
+                } else if (section === 'course') {
+                    // 课程块中间的描述行
+                    if (t.match(/课时|学时/) || t.match(/^[📚💻📊🎨🐍🎓]/)) {
+                        courseLines.push(t);
+                    } else {
+                        section = 'after';
+                        afterLines.push(t);
+                    }
+                } else if (section === 'before') {
+                    beforeLines.push(t);
+                } else {
+                    afterLines.push(t);
                 }
             }
-            rows.forEach(r => { html += '<tr>'; r.forEach(c => html += `<td>${escapeHtml(c)}</td>`); html += '</tr>'; });
+
+            // 解析课程
+            let courses = [];
+            for (let line of courseLines) {
+                let c = parseCourseLine(line);
+                if (c) courses.push(c);
+            }
+
+            // 如果解析失败，回退
+            if (courses.length === 0) {
+                return renderMarkdown(text);
+            }
+
+            // 组装HTML
+            let html = '';
+
+            // 前置文本
+            if (beforeLines.length) {
+                html += renderMarkdown(beforeLines.join('\n')) + '<br>';
+            }
+
+            // 表格
+            const hasHours = courses.some(c => c.hours);
+            const hasDesc = courses.some(c => c.desc);
+            html += '<table class="course-table"><thead><tr>';
+            html += '<th>课程</th><th>价格</th>';
+            if (hasHours) html += '<th>课时</th>';
+            if (hasDesc) html += '<th>说明</th>';
+            html += '</tr></thead><tbody>';
+            courses.forEach(c => {
+                html += '<tr>';
+                html += '<td>' + escapeHtml(c.name) + '</td>';
+                html += '<td>¥' + escapeHtml(c.price) + '</td>';
+                if (hasHours) html += '<td>' + (c.hours ? escapeHtml(c.hours) + 'h' : '-') + '</td>';
+                if (hasDesc) html += '<td>' + escapeHtml(c.desc) + '</td>';
+                html += '</tr>';
+            });
             html += '</tbody></table>';
-            const before = text.split('课程名称')[0].trim();
-            return (before ? escapeHtml(before) + '<br>' : '') + html;
+
+            // 后置文本
+            if (afterLines.length) {
+                html += renderMarkdown(afterLines.join('\n'));
+            }
+
+            return html;
         }
 
         function addMessage(content, isUser = false) {
@@ -204,10 +375,12 @@
             document.getElementById('quickReplies').style.display = 'none';
             const el = document.createElement('div');
             el.className = `message ${isUser ? 'user' : 'bot'}`;
+            const bubbleHtml = isUser ? escapeHtml(content) : formatMessage(content);
+            console.log('[addMessage] bubbleHtml:', bubbleHtml);
             el.innerHTML = `
                 <div class="msg-avatar">${isUser ? '👤' : '🐮'}</div>
                 <div class="msg-content">
-                    <div class="msg-bubble">${isUser ? escapeHtml(content) : formatMessage(content)}</div>
+                    <div class="msg-bubble">${bubbleHtml}</div>
                     <div class="msg-time">${getCurrentTime()}</div>
                 </div>`;
             d.insertBefore(el, document.getElementById('typingIndicator'));

@@ -138,6 +138,7 @@ public class IntentMatcher {
                         break;
                     }
                 }
+                //如果学历或是兴趣已经匹配到了就跳出，不用还接着匹配
                 if (result.containsKey(field)) break;
             }
         }

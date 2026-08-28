@@ -8,6 +8,8 @@ import com.aicustomer.service.CampusCourseService;
 import com.aicustomer.service.CampusService;
 import com.aicustomer.service.CityService;
 import com.aicustomer.service.ProvinceService;
+import com.fasterxml.jackson.annotation.JsonSetter;
+import com.fasterxml.jackson.annotation.Nulls;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -187,6 +189,7 @@ public class CampusFunctions {
     @Data
     public static class GetCitiesRequest {
         private Long provinceId;
+        public void setProvinceId(Object value) { this.provinceId = LongParser.parse(value); }
     }
 
     @Data
@@ -200,6 +203,10 @@ public class CampusFunctions {
         private Long provinceId;
         private Long cityId;
         private Long courseId;
+
+        public void setProvinceId(Object value) { this.provinceId = LongParser.parse(value); }
+        public void setCityId(Object value) { this.cityId = LongParser.parse(value); }
+        public void setCourseId(Object value) { this.courseId = LongParser.parse(value); }
     }
 
     @Data
@@ -211,6 +218,7 @@ public class CampusFunctions {
     @Data
     public static class GetCampusCoursesRequest {
         private Long campusId;
+        public void setCampusId(Object value) { this.campusId = LongParser.parse(value); }
     }
 
     @Data

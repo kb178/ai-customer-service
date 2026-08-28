@@ -138,12 +138,12 @@ public class RedisChatMemory implements ChatMemory {
         String role = stored.substring(0, newlineIdx);
         String content = stored.substring(newlineIdx + 1);
 
-        return switch (role) {
-            case "user" -> new UserMessage(content);
-            case "assistant" -> new AssistantMessage(content);
-            case "system" -> new SystemMessage(content);
-            default -> new UserMessage(content);
-        };
+        switch (role) {
+            case "user": return new UserMessage(content);
+            case "assistant": return new AssistantMessage(content);
+            case "system": return new SystemMessage(content);
+            default: return new UserMessage(content);
+        }
     }
 
     /**

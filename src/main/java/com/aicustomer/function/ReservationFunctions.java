@@ -1,6 +1,8 @@
 package com.aicustomer.function;
 
 import com.aicustomer.config.BizConstants;
+import com.aicustomer.config.SessionContextHolder;
+import com.aicustomer.entity.SessionContext;
 import com.aicustomer.entity.Course;
 import com.aicustomer.entity.Campus;
 import com.aicustomer.entity.CampusCourse;
@@ -17,7 +19,9 @@ import org.springframework.context.annotation.Description;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.function.Function;
 
 /**
@@ -35,6 +39,7 @@ public class ReservationFunctions {
     private final CampusCourseService campusCourseService;
     private final CourseScheduleService courseScheduleService;
     private final CustomerService customerService;
+    private final SessionContextHolder sessionContextHolder;
 
     /**
      * 创建预约函数
@@ -141,6 +146,29 @@ public class ReservationFunctions {
 
             reservationService.createReservation(reservation);
 
+            // 创建成功后，直接把预约ID存到 SessionContext
+            SessionContext context = sessionContextHolder.getCurrentContext();
+            if (context != null) {
+                context.setReservationId(reservation.getId());
+                // 同步更新客户信息到上下文
+                if (request.getCustomerName() != null && !request.getCustomerName().isEmpty()) {
+                    context.setCustomerName(request.getCustomerName());
+                }
+                if (request.getPhone() != null && !request.getPhone().isEmpty()) {
+                    context.setPhone(request.getPhone());
+                }
+                if (request.getCourseId() != null) {
+                    context.setSelectedCourseId(request.getCourseId());
+                    context.setSelectedCourseName(course.getName());
+                }
+                if (request.getCampusId() != null) {
+                    context.setSelectedCampusId(request.getCampusId());
+                    context.setSelectedCampusName(campus.getName());
+                }
+                sessionContextHolder.saveCurrentContext(context);
+                log.info("预约ID已存入SessionContext: {}", reservation.getId());
+            }
+
             // 记录日志
             reservationLogService.addLog(reservation.getId(), null, 0, "system", "创建预约");
 
@@ -180,6 +208,11 @@ public class ReservationFunctions {
 
     /**
      * 修改预约函数
+     *
+     * 确认机制：
+     * - 第一次调用：暂存修改数据到 pendingUpdate，返回确认提示
+     * - 用户确认后 chat() 会调用 executePendingUpdate() 直接执行，不经过此函数
+     * - 如果用户确认后 LLM 再次调用此函数，检测到 pending 匹配则直接执行
      */
     @Bean
     @Description("修改已有预约。参数：reservationId(预约ID)、courseId(课程ID，可选)、campusId(校区ID，可选)")
@@ -187,7 +220,24 @@ public class ReservationFunctions {
         return request -> {
             log.info("Function Calling - 修改预约: reservationId={}", request.getReservationId());
 
-            Reservation reservation = reservationService.getById(request.getReservationId());
+            // 如果 LLM 没传 reservationId，从 SessionContext 获取
+            Long reservationId = request.getReservationId();
+            if (reservationId == null) {
+                SessionContext ctx = sessionContextHolder.getCurrentContext();
+                if (ctx != null && ctx.getReservationId() != null) {
+                    reservationId = ctx.getReservationId();
+                    log.info("从 SessionContext 获取预约ID: {}", reservationId);
+                }
+            }
+
+            if (reservationId == null) {
+                UpdateReservationResponse response = new UpdateReservationResponse();
+                response.setSuccess(false);
+                response.setMessage("未找到预约记录，请先提供预约ID或手机号查询");
+                return response;
+            }
+
+            Reservation reservation = reservationService.getById(reservationId);
             if (reservation == null) {
                 UpdateReservationResponse response = new UpdateReservationResponse();
                 response.setSuccess(false);
@@ -195,50 +245,107 @@ public class ReservationFunctions {
                 return response;
             }
 
-            Integer oldStatus = reservation.getStatus();
+            // 检查是否有待确认的修改（用户已确认，LLM 再次调用的情况）
+            SessionContext context = sessionContextHolder.getCurrentContext();
+            if (context != null && context.getPendingUpdate() != null) {
+                // 用户已确认，直接执行
+                Map<String, Object> pendingData = context.getPendingUpdate();
+                if (pendingData.containsKey("courseId")) {
+                    reservation.setCourseId((Long) pendingData.get("courseId"));
+                }
+                if (pendingData.containsKey("campusId")) {
+                    reservation.setCampusId((Long) pendingData.get("campusId"));
+                }
+                reservationService.updateById(reservation);
+                context.setPendingUpdate(null);
+                sessionContextHolder.saveCurrentContext(context);
 
-            if (request.getCustomerName() != null && !request.getCustomerName().isEmpty()) {
-                reservation.setCustomerName(request.getCustomerName());
+                Course course = courseService.getById(reservation.getCourseId());
+                Campus campus = campusService.getById(reservation.getCampusId());
+
+                UpdateReservationResponse response = new UpdateReservationResponse();
+                response.setSuccess(true);
+                response.setMessage("预约修改成功");
+                response.setCustomerName(reservation.getCustomerName());
+                response.setPhone(reservation.getPhone());
+                response.setCourseName(course != null ? course.getName() : "未知");
+                response.setCampusName(campus != null ? campus.getName() : "未知");
+                return response;
             }
-            if (request.getPhone() != null && !request.getPhone().isEmpty()) {
-                reservation.setPhone(request.getPhone());
-            }
+
+            // 没有 pending → 暂存修改数据，等待用户确认
+            Map<String, Object> pending = new HashMap<>();
             if (request.getCourseId() != null) {
-                reservation.setCourseId(request.getCourseId());
+                pending.put("courseId", request.getCourseId());
             }
             if (request.getCampusId() != null) {
-                reservation.setCampusId(request.getCampusId());
+                pending.put("campusId", request.getCampusId());
             }
 
-            reservationService.updateById(reservation);
+            if (pending.isEmpty()) {
+                UpdateReservationResponse response = new UpdateReservationResponse();
+                response.setSuccess(false);
+                response.setMessage("请提供要修改的内容（课程或校区）");
+                return response;
+            }
 
-            // 记录日志
-            reservationLogService.addLog(reservation.getId(), oldStatus, reservation.getStatus(), "system", "修改预约");
+            // 暂存到 SessionContext
+            if (context != null) {
+                context.setPendingUpdate(pending);
+                sessionContextHolder.saveCurrentContext(context);
+            }
 
-            Course course = courseService.getById(reservation.getCourseId());
-            Campus campus = campusService.getById(reservation.getCampusId());
+            // 构建确认提示
+            StringBuilder sb = new StringBuilder("您确认要修改预约吗？\n");
+            if (pending.containsKey("courseId")) {
+                Course course = courseService.getById((Long) pending.get("courseId"));
+                sb.append("- 课程改为：").append(course != null ? course.getName() : "未知").append("\n");
+            }
+            if (pending.containsKey("campusId")) {
+                Campus campus = campusService.getById((Long) pending.get("campusId"));
+                sb.append("- 校区改为：").append(campus != null ? campus.getName() : "未知").append("\n");
+            }
+            sb.append("\n请回复【确认】执行修改，或回复其他内容取消。");
 
             UpdateReservationResponse response = new UpdateReservationResponse();
             response.setSuccess(true);
-            response.setMessage("预约修改成功");
-            response.setCustomerName(reservation.getCustomerName());
-            response.setPhone(reservation.getPhone());
-            response.setCourseName(course != null ? course.getName() : "未知");
-            response.setCampusName(campus != null ? campus.getName() : "未知");
+            response.setMessage(sb.toString());
             return response;
         };
     }
 
     /**
      * 取消预约函数
+     *
+     * 确认机制：
+     * - 第一次调用：暂存取消原因到 pendingCancelReason，返回确认提示
+     * - 用户确认后 chat() 会调用 executePendingCancel() 直接执行
+     * - 如果用户确认后 LLM 再次调用此函数，检测到 pending 则直接执行
      */
     @Bean
-    @Description("取消已有预约。参数：reservationId(预约ID)、reason(取消原因)")
+    @Description("取消已有预约。参数：reservationId(预约ID)、reason(取消原因，可选)")
     public Function<CancelReservationRequest, CancelReservationResponse> cancelReservation() {
         return request -> {
             log.info("Function Calling - 取消预约: reservationId={}, reason={}", request.getReservationId(), request.getReason());
 
-            Reservation reservation = reservationService.getById(request.getReservationId());
+            // 如果 LLM 没传 reservationId，从 SessionContext 获取
+            Long reservationId = request.getReservationId();
+            if (reservationId == null) {
+                SessionContext ctx = sessionContextHolder.getCurrentContext();
+                if (ctx != null && ctx.getReservationId() != null) {
+                    reservationId = ctx.getReservationId();
+                    log.info("从 SessionContext 获取预约ID: {}", reservationId);
+                }
+            }
+
+            if (reservationId == null) {
+                CancelReservationResponse response = new CancelReservationResponse();
+                response.setSuccess(false);
+                response.setMessage("未找到预约记录，请先提供预约ID或手机号查询");
+                return response;
+            }
+
+            Reservation reservation = reservationService.getById(reservationId);
             if (reservation == null) {
                 CancelReservationResponse response = new CancelReservationResponse();
                 response.setSuccess(false);
@@ -246,26 +353,49 @@ public class ReservationFunctions {
                 return response;
             }
 
-            Integer oldStatus = reservation.getStatus();
-            reservation.setStatus(BizConstants.STATUS_CANCELLED);
-            reservation.setRemark("取消原因：" + request.getReason());
-            reservationService.updateById(reservation);
+            // 检查是否有待确认的取消（用户已确认，LLM 再次调用的情况）
+            SessionContext context = sessionContextHolder.getCurrentContext();
+            if (context != null && context.getPendingCancelReason() != null) {
+                // 用户已确认，直接执行取消
+                String reason = context.getPendingCancelReason();
+                Integer oldStatus = reservation.getStatus();
+                reservation.setStatus(BizConstants.STATUS_CANCELLED);
+                reservation.setRemark("取消原因：" + reason);
+                reservationService.updateById(reservation);
 
-            // 记录日志
-            reservationLogService.addLog(reservation.getId(), oldStatus, 3, "system", "取消预约：" + request.getReason());
+                reservationLogService.addLog(reservation.getId(), oldStatus, 3, "system", "取消预约：" + reason);
 
-            // 释放校区课程容量
-            if (reservation.getCampusId() != null && reservation.getCourseId() != null) {
-                CampusCourse campusCourse = campusCourseService.getCampusCourse(reservation.getCampusId(), reservation.getCourseId());
-                if (campusCourse != null && campusCourse.getCurrentStudents() != null && campusCourse.getCurrentStudents() > 0) {
-                    campusCourse.setCurrentStudents(campusCourse.getCurrentStudents() - 1);
-                    campusCourseService.updateById(campusCourse);
+                // 释放校区课程容量
+                if (reservation.getCampusId() != null && reservation.getCourseId() != null) {
+                    CampusCourse campusCourse = campusCourseService.getCampusCourse(reservation.getCampusId(), reservation.getCourseId());
+                    if (campusCourse != null && campusCourse.getCurrentStudents() != null && campusCourse.getCurrentStudents() > 0) {
+                        campusCourse.setCurrentStudents(campusCourse.getCurrentStudents() - 1);
+                        campusCourseService.updateById(campusCourse);
+                    }
                 }
+
+                context.setPendingCancelReason(null);
+                context.setReservationId(null);
+                sessionContextHolder.saveCurrentContext(context);
+
+                CancelReservationResponse response = new CancelReservationResponse();
+                response.setSuccess(true);
+                response.setMessage("预约已取消");
+                return response;
+            }
+
+            // 没有 pending → 暂存取消原因，等待用户确认
+            String reason = (request.getReason() != null && !request.getReason().isEmpty())
+                    ? request.getReason() : "用户主动取消";
+
+            if (context != null) {
+                context.setPendingCancelReason(reason);
+                sessionContextHolder.saveCurrentContext(context);
             }
 
             CancelReservationResponse response = new CancelReservationResponse();
             response.setSuccess(true);
-            response.setMessage("预约已取消");
+            response.setMessage("您确认要取消预约吗？\n取消原因：" + reason + "\n\n请回复【确认】执行取消，或回复其他内容取消操作。");
             return response;
         };
     }
@@ -279,12 +409,26 @@ public class ReservationFunctions {
         return request -> {
             log.info("Function Calling - 查询预约: reservationId={}, phone={}", request.getReservationId(), request.getPhone());
 
+            // 从 SessionContext 兜底获取参数
+            SessionContext ctx = sessionContextHolder.getCurrentContext();
+            Long reservationId = request.getReservationId();
+            String phone = request.getPhone();
+
+            if (reservationId == null && ctx != null && ctx.getReservationId() != null) {
+                reservationId = ctx.getReservationId();
+                log.info("从 SessionContext 获取预约ID: {}", reservationId);
+            }
+            if ((phone == null || phone.isEmpty()) && ctx != null && ctx.getPhone() != null) {
+                phone = ctx.getPhone();
+                log.info("从 SessionContext 获取手机号: {}", phone);
+            }
+
             Reservation reservation = null;
-            if (request.getReservationId() != null) {
-                reservation = reservationService.getById(request.getReservationId());
-            } else if (request.getPhone() != null && !request.getPhone().isEmpty()) {
+            if (reservationId != null) {
+                reservation = reservationService.getById(reservationId);
+            } else if (phone != null && !phone.isEmpty()) {
                 reservation = reservationService.lambdaQuery()
-                        .eq(Reservation::getPhone, request.getPhone())
+                        .eq(Reservation::getPhone, phone)
                         .orderByDesc(Reservation::getCreateTime)
                         .last("LIMIT 1")
                         .one();
@@ -330,6 +474,9 @@ public class ReservationFunctions {
         private Long campusId;
         private Long scheduleId;
         private String appointmentTime;
+        public void setCourseId(Object value) { this.courseId = LongParser.parse(value); }
+        public void setCampusId(Object value) { this.campusId = LongParser.parse(value); }
+        public void setScheduleId(Object value) { this.scheduleId = LongParser.parse(value); }
     }
 
     @Data
@@ -350,6 +497,9 @@ public class ReservationFunctions {
         private String phone;
         private Long courseId;
         private Long campusId;
+        public void setReservationId(Object value) { this.reservationId = LongParser.parse(value); }
+        public void setCourseId(Object value) { this.courseId = LongParser.parse(value); }
+        public void setCampusId(Object value) { this.campusId = LongParser.parse(value); }
     }
 
     @Data
@@ -366,6 +516,7 @@ public class ReservationFunctions {
     public static class CancelReservationRequest {
         private Long reservationId;
         private String reason;
+        public void setReservationId(Object value) { this.reservationId = LongParser.parse(value); }
     }
 
     @Data
@@ -378,6 +529,7 @@ public class ReservationFunctions {
     public static class QueryReservationRequest {
         private Long reservationId;
         private String phone;
+        public void setReservationId(Object value) { this.reservationId = LongParser.parse(value); }
     }
 
     @Data

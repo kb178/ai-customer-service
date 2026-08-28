@@ -114,13 +114,14 @@ public class CustomerFunctions {
                 item.setCampusName(campus != null ? campus.getName() : "未知");
                 item.setAppointmentTime(r.getAppointmentTime() != null ? r.getAppointmentTime().toString() : null);
 
-                String statusText = switch (r.getStatus()) {
-                    case 0 -> "待确认";
-                    case 1 -> "已确认";
-                    case 2 -> "已完成";
-                    case 3 -> "已取消";
-                    default -> "未知";
-                };
+                String statusText;
+                switch (r.getStatus()) {
+                    case 0: statusText = "待确认"; break;
+                    case 1: statusText = "已确认"; break;
+                    case 2: statusText = "已完成"; break;
+                    case 3: statusText = "已取消"; break;
+                    default: statusText = "未知"; break;
+                }
                 item.setStatus(statusText);
                 item.setRemark(r.getRemark());
                 items.add(item);

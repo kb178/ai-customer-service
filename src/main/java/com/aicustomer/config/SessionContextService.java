@@ -63,10 +63,10 @@ public class SessionContextService {
                 if (raw != null) {
                     failCount = 0;
                     SessionContext context;
-                    if (raw instanceof SessionContext sc) {
-                        context = sc;
-                    } else if (raw instanceof String json) {
-                        context = objectMapper.readValue(json, SessionContext.class);
+                    if (raw instanceof SessionContext) {
+                        context = (SessionContext) raw;
+                    } else if (raw instanceof String) {
+                        context = objectMapper.readValue((String) raw, SessionContext.class);
                     } else {
                         context = objectMapper.readValue(raw.toString(), SessionContext.class);
                     }
